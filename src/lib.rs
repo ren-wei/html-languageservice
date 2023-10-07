@@ -19,6 +19,16 @@ impl LanguageService {
         }
     }
 
+    pub fn set_data_providers(
+        &mut self,
+        built_in: bool,
+        providers: Vec<Box<dyn IHTMLDataProvider>>,
+    ) {
+        self.html_parse
+            .data_manager
+            .set_data_providers(built_in, providers);
+    }
+
     pub fn create_scanner(input: &str, initial_offset: usize) -> Scanner {
         Scanner::new(input, initial_offset, ScannerState::WithinContent)
     }

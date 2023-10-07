@@ -180,7 +180,7 @@ impl HTMLDocument {
 }
 
 pub struct HTMLParser {
-    data_manager: HTMLDataManager,
+    pub data_manager: HTMLDataManager,
 }
 
 impl HTMLParser {
