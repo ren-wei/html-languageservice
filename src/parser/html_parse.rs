@@ -2,9 +2,10 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
+    sync::{Arc, RwLock},
 };
 
-use lsp_types::TextDocumentItem;
+use lsp_textdocument::FullTextDocument;
 
 use crate::{
     language_facts::data_manager::HTMLDataManager,
@@ -180,20 +181,21 @@ impl HTMLDocument {
 }
 
 pub struct HTMLParser {
-    pub data_manager: HTMLDataManager,
+    pub data_manager: Arc<RwLock<HTMLDataManager>>,
 }
 
 impl HTMLParser {
-    pub fn new(data_manager: HTMLDataManager) -> HTMLParser {
+    pub fn new(data_manager: Arc<RwLock<HTMLDataManager>>) -> HTMLParser {
         HTMLParser { data_manager }
     }
 
-    pub fn parse_document(&self, document: TextDocumentItem) -> HTMLDocument {
-        self.parse(&document.text, &document.language_id)
+    pub fn parse_document(&self, document: FullTextDocument) -> HTMLDocument {
+        self.parse(document.get_content(None), &document.language_id())
     }
 
     pub fn parse(&self, text: &str, language_id: &str) -> HTMLDocument {
-        let void_elements = self.data_manager.get_void_elements(language_id);
+        let manager = self.data_manager.read().unwrap();
+        let void_elements = manager.get_void_elements(language_id);
         let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent);
 
         let html_document = Rc::new(RefCell::new(Node::new(0, text.len(), vec![], Weak::new())));
@@ -226,6 +228,8 @@ impl HTMLParser {
                             if tag.is_some()
                                 && self
                                     .data_manager
+                                    .read()
+                                    .unwrap()
                                     .is_void_element(&tag.unwrap(), &void_elements)
                             {
                                 cur.borrow_mut().closed = true;
@@ -315,7 +319,7 @@ mod tests {
     use super::*;
 
     fn parse(text: &str) -> HTMLDocument {
-        let data_manager = HTMLDataManager::new(true, None);
+        let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(true, None)));
         HTMLParser::new(data_manager).parse(text, "html")
     }
 

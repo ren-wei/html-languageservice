@@ -20,7 +20,7 @@ impl HTMLDataManager {
         };
         data_manager.set_data_providers(
             use_default_data_provider,
-            custom_data_providers.unwrap_or_default(),
+            custom_data_providers.unwrap_or(vec![]),
         );
         data_manager
     }

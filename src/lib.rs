@@ -1,21 +1,36 @@
 pub mod html_data;
 pub mod language_facts;
 pub mod parser;
+pub mod services;
+
+use std::sync::{Arc, RwLock};
 
 use language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider};
-use lsp_types::{ClientCapabilities, TextDocumentItem};
+use lsp_textdocument::FullTextDocument;
+use lsp_types::{ClientCapabilities, CompletionList, Position};
 use parser::html_parse::{HTMLDocument, HTMLParser};
 use parser::html_scanner::{Scanner, ScannerState};
+use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCompletion};
 
 pub struct LanguageService {
+    data_manager: Arc<RwLock<HTMLDataManager>>,
     html_parse: HTMLParser,
+    html_completion: HTMLCompletion,
 }
 
 impl LanguageService {
-    pub fn new<'a>(options: LanguageServiceOptions) -> LanguageService {
-        let data_manager = HTMLDataManager::new(true, options.custom_data_providers);
+    pub fn new(
+        options: Arc<LanguageServiceOptions>,
+        custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+    ) -> LanguageService {
+        let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(
+            true,
+            custom_data_providers,
+        )));
         LanguageService {
-            html_parse: HTMLParser::new(data_manager),
+            data_manager: Arc::clone(&data_manager),
+            html_parse: HTMLParser::new(Arc::clone(&data_manager)),
+            html_completion: HTMLCompletion::new(Arc::clone(&options), Arc::clone(&data_manager)),
         }
     }
 
@@ -24,8 +39,9 @@ impl LanguageService {
         built_in: bool,
         providers: Vec<Box<dyn IHTMLDataProvider>>,
     ) {
-        self.html_parse
-            .data_manager
+        self.data_manager
+            .write()
+            .unwrap()
             .set_data_providers(built_in, providers);
     }
 
@@ -33,8 +49,25 @@ impl LanguageService {
         Scanner::new(input, initial_offset, ScannerState::WithinContent)
     }
 
-    pub fn parse_html_document(&self, document: TextDocumentItem) -> HTMLDocument {
+    pub fn parse_html_document(&self, document: FullTextDocument) -> HTMLDocument {
         self.html_parse.parse_document(document)
+    }
+
+    pub fn do_complete(
+        &self,
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+        document_context: impl DocumentContext,
+        settings: Option<&CompletionConfiguration>,
+    ) -> CompletionList {
+        self.html_completion.do_complete(
+            document,
+            position,
+            html_document,
+            document_context,
+            settings,
+        )
     }
 }
 
@@ -51,7 +84,7 @@ pub struct LanguageServiceOptions {
      * Provide data that could enhance the service's understanding of
      * HTML tag / attribute / attribute-value
      */
-    pub custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+    // pub custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
 
     /**
      * Abstract file system access away from the service.
@@ -65,7 +98,7 @@ pub struct LanguageServiceOptions {
     pub client_capabilities: Option<ClientCapabilities>,
 }
 
-pub trait FileSystemProvider {
+pub trait FileSystemProvider: Send + Sync {
     fn stat(&self, uri: DocumentUri) -> FileStat;
 
     fn read_directory(&self, uri: DocumentUri) -> (String, FileType);

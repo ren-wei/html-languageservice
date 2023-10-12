@@ -10,7 +10,7 @@ pub struct HTMLDataProvider {
     value_set_map: HashMap<String, Vec<IValueData>>,
 }
 
-pub trait IHTMLDataProvider {
+pub trait IHTMLDataProvider: Send + Sync {
     fn get_id(&self) -> &str;
     fn is_applicable(&self, language_id: &str) -> bool;
     fn provide_tags(&self) -> &Vec<ITagData>;
