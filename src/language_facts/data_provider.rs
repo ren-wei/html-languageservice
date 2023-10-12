@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use crate::html_data::{HTMLDataV1, IAttributeData, ITagData, IValueData};
+use lsp_types::{MarkupContent, MarkupKind};
+
+use crate::{
+    html_data::{Description, HTMLDataV1, IAttributeData, IReference, ITagData, IValueData},
+    utils::markup::normalize_markup_content,
+};
 
 pub struct HTMLDataProvider {
     id: String,
@@ -119,4 +124,61 @@ impl IHTMLDataProvider for HTMLDataProvider {
 
         values
     }
+}
+
+/// Generate Documentation used in hover/complete From documentation and references
+pub fn generate_documentation(
+    item: GenerateDocumentationItem,
+    setting: GenerateDocumentationSetting,
+) -> Option<MarkupContent> {
+    let mut result = MarkupContent {
+        kind: if setting.does_support_markdown {
+            MarkupKind::Markdown
+        } else {
+            MarkupKind::PlainText
+        },
+        value: String::new(),
+    };
+
+    if item.description.is_some() && setting.documentation {
+        let normalized_description = normalize_markup_content(item.description.unwrap());
+        result.value += &normalized_description.value;
+    }
+
+    if item.references.as_deref().is_some_and(|r| r.len() > 0) && setting.references {
+        if result.value.len() > 0 {
+            result.value += "\n\n";
+        }
+        let references = item.references.unwrap();
+        if setting.does_support_markdown {
+            result.value += &references
+                .iter()
+                .map(|r| format!("[{}]({})", r.name, r.url))
+                .collect::<Vec<String>>()
+                .join(" | ");
+        } else {
+            result.value += &references
+                .iter()
+                .map(|r| format!("{}: {}", r.name, r.url))
+                .collect::<Vec<String>>()
+                .join("\n");
+        }
+    }
+
+    if result.value.len() > 0 {
+        Some(result)
+    } else {
+        None
+    }
+}
+
+pub struct GenerateDocumentationItem {
+    pub description: Option<Description>,
+    pub references: Option<Vec<IReference>>,
+}
+
+pub struct GenerateDocumentationSetting {
+    pub documentation: bool,
+    pub references: bool,
+    pub does_support_markdown: bool,
 }

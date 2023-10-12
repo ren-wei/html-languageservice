@@ -37,7 +37,7 @@ impl Scanner<'_> {
         }
     }
 
-    pub fn scan(&mut self) -> &TokenType {
+    pub fn scan(&mut self) -> TokenType {
         let offset = self.stream.pos().clone();
         let old_state = &self.state.clone();
         self.internal_scan();
@@ -54,11 +54,11 @@ impl Scanner<'_> {
             self.stream.advance(1);
             return self.finish_token(offset, TokenType::Unknown, None);
         }
-        &self.token_type
+        self.token_type
     }
 
-    pub fn get_token_type(&self) -> &TokenType {
-        &self.token_type
+    pub fn get_token_type(&self) -> TokenType {
+        self.token_type
     }
 
     pub fn get_token_offset(&self) -> usize {
@@ -77,15 +77,15 @@ impl Scanner<'_> {
         &self.stream.get_source()[self.token_offset..self.get_token_end()]
     }
 
-    pub fn get_scanner_state(&self) -> &ScannerState {
-        &self.state
+    pub fn get_scanner_state(&self) -> ScannerState {
+        self.state
     }
 
     pub fn get_token_error(&self) -> Option<&'static str> {
         self.token_error
     }
 
-    fn internal_scan(&mut self) -> &TokenType {
+    fn internal_scan(&mut self) -> TokenType {
         let offset = self.stream.pos();
         if self.stream.eos() {
             return self.finish_token(offset, TokenType::EOS, None);
@@ -395,11 +395,11 @@ impl Scanner<'_> {
         offset: usize,
         token_type: TokenType,
         error_message: Option<&'static str>,
-    ) -> &TokenType {
+    ) -> TokenType {
         self.token_type = token_type;
         self.token_offset = offset;
         self.token_error = error_message;
-        &self.token_type
+        self.token_type
     }
 
     fn next_element_name(&mut self) -> Option<String> {
@@ -651,7 +651,7 @@ mod tests {
 
         for t in tests {
             let mut scanner = Scanner::new(&t.input, 0, scanner_state);
-            let mut token_type = *scanner.scan();
+            let mut token_type = scanner.scan();
             let mut actual = vec![];
             while token_type != TokenType::EOS {
                 let offset = scanner.get_token_offset();
@@ -666,10 +666,10 @@ mod tests {
                     );
                 }
                 actual.push(actual_token);
-                token_type = *scanner.scan();
+                token_type = scanner.scan();
             }
             assert_eq!(actual, t.tokens);
-            scanner_state = *scanner.get_scanner_state();
+            scanner_state = scanner.get_scanner_state();
         }
     }
 

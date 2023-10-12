@@ -1,15 +1,23 @@
 use std::{
     collections::HashMap,
-    iter::Filter,
     sync::{Arc, RwLock},
 };
 
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{CompletionList, Position, Range, TextDocumentItem};
+use lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionList, CompletionTextEdit, Documentation,
+    InsertTextFormat, Position, Range, TextDocumentItem, TextEdit,
+};
 use regex::Regex;
 
 use crate::{
-    language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider},
+    language_facts::{
+        data_manager::HTMLDataManager,
+        data_provider::{
+            generate_documentation, GenerateDocumentationItem, GenerateDocumentationSetting,
+            IHTMLDataProvider,
+        },
+    },
     parser::{
         html_parse::HTMLDocument,
         html_scanner::{Scanner, ScannerState, TokenType},
@@ -84,7 +92,7 @@ impl HTMLCompletion {
         let mut current_tag = None;
         let mut current_attribute_name = "";
 
-        let mut token = *scanner.scan();
+        let mut token = scanner.scan();
 
         let mut content = CompletionContext {
             offset,
@@ -154,7 +162,7 @@ impl HTMLCompletion {
                 }
                 TokenType::Whitespace => {
                     if offset <= scanner.get_token_end() {
-                        match *scanner.get_scanner_state() {
+                        match scanner.get_scanner_state() {
                             ScannerState::AfterOpeningStartTag => {
                                 let start_pos = scanner.get_token_offset();
                                 let end_tag_pos = content.scan_next_for_end_pos(
@@ -262,7 +270,7 @@ impl HTMLCompletion {
                     }
                 }
             }
-            token = *scanner.scan();
+            token = scanner.scan();
         }
 
         result
@@ -287,7 +295,7 @@ impl HTMLCompletion {
 }
 
 struct CompletionContext<'a> {
-    result: &'a CompletionList,
+    result: &'a mut CompletionList,
     offset: usize,
     document: &'a FullTextDocument,
     data_providers: Vec<&'a Box<dyn IHTMLDataProvider>>,
@@ -314,7 +322,7 @@ impl CompletionContext<'_> {
         next_token: TokenType,
     ) -> usize {
         if offset == scanner.get_token_end() {
-            *token = *scanner.scan();
+            *token = scanner.scan();
             if *token == next_token && scanner.get_token_offset() == offset {
                 return scanner.get_token_end();
             }
@@ -329,6 +337,35 @@ impl CompletionContext<'_> {
 
     fn collect_open_tag_suggestions(&mut self, after_open_bracket: usize, tag_name_end: usize) {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
+        for provider in &self.data_providers {
+            for tag in provider.provide_tags() {
+                let mut item = CompletionItem::default();
+                item.label = tag.name.clone();
+                item.kind = Some(CompletionItemKind::PROPERTY);
+                let documentation = generate_documentation(
+                    GenerateDocumentationItem {
+                        description: tag.description.clone(),
+                        references: tag.references.clone(),
+                    },
+                    GenerateDocumentationSetting {
+                        documentation: true,
+                        references: true,
+                        does_support_markdown: true,
+                    },
+                );
+                if let Some(documentation) = documentation {
+                    item.documentation = Some(Documentation::MarkupContent(documentation));
+                } else {
+                    item.documentation = None;
+                }
+                item.text_edit = Some(CompletionTextEdit::Edit(TextEdit::new(
+                    range,
+                    tag.name.clone(),
+                )));
+                item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
+                self.result.items.push(item);
+            }
+        }
     }
 
     fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {

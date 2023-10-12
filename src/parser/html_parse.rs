@@ -204,8 +204,8 @@ impl HTMLParser {
         let mut end_tag_name = None;
         let mut pending_attribute = None;
         let mut token = scanner.scan();
-        while token != &TokenType::EOS {
-            match *token {
+        while token != TokenType::EOS {
+            match token {
                 TokenType::StartTagOpen => {
                     let child = Rc::new(RefCell::new(Node::new(
                         scanner.get_token_offset(),

@@ -1,6 +1,7 @@
+use lsp_types::MarkupContent;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct HTMLDataV1 {
     pub version: f32,
     pub tags: Option<Vec<ITagData>>,
@@ -10,7 +11,7 @@ pub struct HTMLDataV1 {
     pub value_sets: Option<Vec<IValueSet>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ITagData {
     pub name: String,
     pub description: Option<Description>,
@@ -19,7 +20,7 @@ pub struct ITagData {
     pub void: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct IAttributeData {
     pub name: String,
     pub description: Option<Description>,
@@ -29,36 +30,30 @@ pub struct IAttributeData {
     pub references: Option<Vec<IReference>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct IValueSet {
     pub name: String,
     pub values: Vec<IValueData>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct IValueData {
     pub name: String,
     pub description: Option<Description>,
     pub references: Option<Vec<IReference>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct IReference {
     pub name: String,
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Description {
     String(String),
     MarkupContent(MarkupContent),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct MarkupContent {
-    pub kind: MarkupKind,
-    pub value: String,
 }
 
 #[derive(Serialize, Deserialize)]

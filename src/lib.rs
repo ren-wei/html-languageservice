@@ -2,6 +2,7 @@ pub mod html_data;
 pub mod language_facts;
 pub mod parser;
 pub mod services;
+pub mod utils;
 
 use std::sync::{Arc, RwLock};
 
