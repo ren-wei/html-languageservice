@@ -753,13 +753,14 @@ impl CompletionContext<'_> {
     }
 
     fn collect_character_entity_proposals(&mut self) {
-        let mut k = self.offset - 1;
+        let mut k: i128 = self.offset as i128 - 1;
         let mut character_start = self.position.character;
-        while k >= 0 && is_letter_or_digit(self.text, k) {
+        let _ = k >= 0;
+        while k >= 0 && is_letter_or_digit(self.text, k as usize) {
             k -= 1;
             character_start -= 1;
         }
-        if k >= 0 && self.text.as_bytes()[k] == b'&' {
+        if k >= 0 && self.text.as_bytes()[k as usize] == b'&' {
             let range = Range::new(
                 Position {
                     line: self.position.line,
