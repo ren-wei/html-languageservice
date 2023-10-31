@@ -755,7 +755,6 @@ impl CompletionContext<'_> {
     fn collect_character_entity_proposals(&mut self) {
         let mut k: i128 = self.offset as i128 - 1;
         let mut character_start = self.position.character;
-        let _ = k >= 0;
         while k >= 0 && is_letter_or_digit(self.text, k as usize) {
             k -= 1;
             character_start -= 1;
