@@ -189,7 +189,7 @@ impl HTMLParser {
         HTMLParser { data_manager }
     }
 
-    pub fn parse_document(&self, document: FullTextDocument) -> HTMLDocument {
+    pub fn parse_document(&self, document: &FullTextDocument) -> HTMLDocument {
         self.parse(document.get_content(None), &document.language_id())
     }
 

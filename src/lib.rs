@@ -50,7 +50,7 @@ impl LanguageService {
         Scanner::new(input, initial_offset, ScannerState::WithinContent)
     }
 
-    pub fn parse_html_document(&self, document: FullTextDocument) -> HTMLDocument {
+    pub fn parse_html_document(&self, document: &FullTextDocument) -> HTMLDocument {
         self.html_parse.parse_document(document)
     }
 
