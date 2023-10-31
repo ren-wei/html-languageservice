@@ -890,6 +890,14 @@ pub trait DocumentContext {
     fn resolve_reference(&self, reference: &str, base: &str) -> Option<&str>;
 }
 
+pub struct DefaultDocumentContext;
+
+impl DocumentContext for DefaultDocumentContext {
+    fn resolve_reference(&self, _reference: &str, _base: &str) -> Option<&str> {
+        None
+    }
+}
+
 pub struct CompletionConfiguration {
     hide_auto_complete_proposals: bool,
     attribute_default_value: Quotes,
