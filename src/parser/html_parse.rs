@@ -124,7 +124,7 @@ impl Node {
 }
 
 pub struct HTMLDocument {
-    roots: Vec<Rc<RefCell<Node>>>,
+    pub roots: Vec<Rc<RefCell<Node>>>,
 }
 
 impl HTMLDocument {
