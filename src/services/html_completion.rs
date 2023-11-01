@@ -910,3 +910,236 @@ pub enum Quotes {
     Single,
     Double,
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::LanguageService;
+
+    use super::*;
+
+    fn test_completion_for(
+        value: &str,
+        expected: Expected,
+        settings: Option<CompletionConfiguration>,
+        ls_options: Option<LanguageServiceOptions>,
+    ) {
+        let offset = value.find('|').unwrap();
+        let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
+
+        let ls_options = if let Some(ls_options) = ls_options {
+            Arc::new(ls_options)
+        } else {
+            Arc::new(LanguageServiceOptions::default())
+        };
+        let ls = LanguageService::new(ls_options, None);
+
+        let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
+        let position = document.position_at(offset as u32);
+        let html_document = ls.parse_html_document(&document);
+        let list = ls.do_complete(
+            &document,
+            &position,
+            &html_document,
+            DefaultDocumentContext,
+            settings.as_ref(),
+        );
+
+        // no duplicate labels
+        let mut labels: Vec<String> = list.items.iter().map(|i| i.label.clone()).collect();
+        labels.sort();
+        let mut previous = None;
+        for label in &labels {
+            assert!(
+                previous != Some(label),
+                "Duplicate label {} in {}",
+                label,
+                labels.join(",")
+            );
+            previous = Some(label);
+        }
+        if expected.count.is_some() {
+            assert_eq!(list.items.len(), expected.count.unwrap());
+        }
+        if expected.items.len() > 0 {
+            for item in &expected.items {
+                assert_completion(&list, item, &document);
+            }
+        }
+    }
+
+    fn assert_completion(
+        completions: &CompletionList,
+        expected: &ItemDescription,
+        document: &FullTextDocument,
+    ) {
+        let matches: Vec<&CompletionItem> = completions
+            .items
+            .iter()
+            .filter(|c| c.label == expected.label)
+            .collect();
+        if expected.not_available.is_some_and(|v| v) {
+            assert_eq!(
+                matches.len(),
+                0,
+                "{} should not existing is results",
+                expected.label
+            );
+            return;
+        }
+
+        assert_eq!(
+            matches.len(),
+            1,
+            "{} should only existing once: Actual: ",
+            completions
+                .items
+                .iter()
+                .map(|c| c.label.clone())
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+        let matches = matches[0];
+        if expected.documentation.is_some() {
+            match expected.documentation.clone().unwrap() {
+                Documentation::String(documentation) => {
+                    if let Documentation::String(source) = matches.documentation.clone().unwrap() {
+                        assert_eq!(source, documentation);
+                    } else {
+                        panic!("{} type should is String", expected.label)
+                    }
+                }
+                Documentation::MarkupContent(documentation) => {
+                    if let Documentation::MarkupContent(source) =
+                        matches.documentation.clone().unwrap()
+                    {
+                        assert_eq!(source.value, documentation.value)
+                    } else {
+                        panic!("{} type should is MarkupContent", expected.label)
+                    }
+                }
+            }
+        }
+        if expected.kind.is_some() {
+            assert_eq!(matches.kind, expected.kind);
+        }
+        // 检验修改后的文档是否与期望相同
+        if expected.result_text.is_some() && matches.text_edit.is_some() {
+            let edit = matches.text_edit.clone().unwrap();
+            if let CompletionTextEdit::Edit(edit) = edit {
+                let start_offset = document.offset_at(edit.range.start) as usize;
+                let end_offset = document.offset_at(edit.range.end) as usize;
+                let text = document.get_content(None);
+                assert_eq!(
+                    format!(
+                        "{}{}{}",
+                        &text[..start_offset],
+                        edit.new_text,
+                        &text[end_offset..]
+                    ),
+                    expected.result_text.unwrap()
+                );
+            } else {
+                panic!(
+                    "{} text_edit should is CompletionTextEdit::Edit",
+                    matches.label
+                )
+            }
+        }
+        if expected.filter_text.is_some() {
+            assert_eq!(
+                matches.filter_text.as_ref().unwrap(),
+                expected.filter_text.unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn complete() {
+        test_completion_for(
+            "<|",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "!DOCTYPE",
+                        result_text: Some("<!DOCTYPE html>"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "iframe",
+                        result_text: Some("<iframe"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "h1",
+                        result_text: Some("<h1"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "div",
+                        result_text: Some("<div"),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            "\n<|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "!DOCTYPE",
+                    not_available: Some(true),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            "< |",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "iframe",
+                        result_text: Some("<iframe"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "h1",
+                        result_text: Some("<h1"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "div",
+                        result_text: Some("<div"),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+    }
+
+    #[derive(Default)]
+    struct Expected {
+        count: Option<usize>,
+        items: Vec<ItemDescription>,
+    }
+
+    #[derive(Default)]
+    struct ItemDescription {
+        label: &'static str,
+        result_text: Option<&'static str>,
+        kind: Option<CompletionItemKind>,
+        documentation: Option<Documentation>,
+        filter_text: Option<&'static str>,
+        not_available: Option<bool>,
+    }
+}
