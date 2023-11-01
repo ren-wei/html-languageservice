@@ -362,9 +362,6 @@ impl CompletionContext<'_> {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         for provider in &self.data_providers {
             for tag in provider.provide_tags() {
-                let mut item = CompletionItem::default();
-                item.label = tag.name.clone();
-                item.kind = Some(CompletionItemKind::PROPERTY);
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -376,17 +373,22 @@ impl CompletionContext<'_> {
                         does_support_markdown: true,
                     },
                 );
-                if let Some(documentation) = documentation {
-                    item.documentation = Some(Documentation::MarkupContent(documentation));
+                let documentation = if let Some(documentation) = documentation {
+                    Some(Documentation::MarkupContent(documentation))
                 } else {
-                    item.documentation = None;
-                }
-                item.text_edit = Some(CompletionTextEdit::Edit(TextEdit::new(
-                    range,
-                    tag.name.clone(),
-                )));
-                item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
-                self.result.items.push(item);
+                    None
+                };
+                self.result.items.push(CompletionItem {
+                    label: tag.name.clone(),
+                    kind: Some(CompletionItemKind::PROPERTY),
+                    documentation,
+                    text_edit: Some(CompletionTextEdit::Edit(TextEdit::new(
+                        range,
+                        tag.name.clone(),
+                    ))),
+                    insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+                    ..Default::default()
+                });
             }
         }
     }
@@ -443,9 +445,7 @@ impl CompletionContext<'_> {
                     }
                 }
 
-                let mut item = CompletionItem::default();
-                item.label = attr.name.clone();
-                item.kind = Some(if attr.value_set.as_ref().is_some_and(|v| v == "handler") {
+                let kind = Some(if attr.value_set.as_ref().is_some_and(|v| v == "handler") {
                     CompletionItemKind::FUNCTION
                 } else {
                     CompletionItemKind::VALUE
@@ -461,15 +461,20 @@ impl CompletionContext<'_> {
                         does_support_markdown: self.does_support_markdown,
                     },
                 );
-                if let Some(documentation) = documentation {
-                    item.documentation = Some(Documentation::MarkupContent(documentation));
+                let documentation = if let Some(documentation) = documentation {
+                    Some(Documentation::MarkupContent(documentation))
                 } else {
-                    item.documentation = None;
-                }
-                item.text_edit = Some(CompletionTextEdit::Edit(TextEdit::new(range, code_snippet)));
-                item.insert_text_format = Some(InsertTextFormat::SNIPPET);
-                item.command = command;
-                self.result.items.push(item);
+                    None
+                };
+                self.result.items.push(CompletionItem {
+                    label: attr.name.clone(),
+                    kind,
+                    documentation,
+                    text_edit: Some(CompletionTextEdit::Edit(TextEdit::new(range, code_snippet))),
+                    insert_text_format: Some(InsertTextFormat::SNIPPET),
+                    command,
+                    ..Default::default()
+                });
             }
         }
         self.collect_data_attributes_suggestions(range, &existing_attributes);
@@ -519,15 +524,16 @@ impl CompletionContext<'_> {
         }
 
         for (attr, value) in data_attributes {
-            let mut item = CompletionItem::default();
-            item.label = attr.to_string();
-            item.kind = Some(CompletionItemKind::VALUE);
-            item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
-                range,
-                new_text: value,
-            }));
-            item.insert_text_format = Some(InsertTextFormat::SNIPPET);
-            self.result.items.push(item);
+            self.result.items.push(CompletionItem {
+                label: attr.to_string(),
+                kind: Some(CompletionItemKind::VALUE),
+                text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                    range,
+                    new_text: value,
+                })),
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            });
         }
     }
 
@@ -596,10 +602,6 @@ impl CompletionContext<'_> {
                     value.name.clone()
                 };
 
-                let mut item = CompletionItem::default();
-                item.label = value.name.clone();
-                item.filter_text = Some(insert_text.clone());
-                item.kind = Some(CompletionItemKind::UNIT);
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: value.description.clone(),
@@ -611,17 +613,23 @@ impl CompletionContext<'_> {
                         does_support_markdown: self.does_support_markdown,
                     },
                 );
-                if let Some(documentation) = documentation {
-                    item.documentation = Some(Documentation::MarkupContent(documentation));
+                let documentation = if let Some(documentation) = documentation {
+                    Some(Documentation::MarkupContent(documentation))
                 } else {
-                    item.documentation = None;
-                }
-                item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
-                    range,
-                    new_text: insert_text.clone(),
-                }));
-                item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
-                self.result.items.push(item);
+                    None
+                };
+                self.result.items.push(CompletionItem {
+                    label: value.name.clone(),
+                    filter_text: Some(insert_text.clone()),
+                    kind: Some(CompletionItemKind::UNIT),
+                    documentation,
+                    text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                        range,
+                        new_text: insert_text.clone(),
+                    })),
+                    insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+                    ..Default::default()
+                });
             }
         }
     }
@@ -656,32 +664,35 @@ impl CompletionContext<'_> {
                     || cur_node.end_tag_start.is_some()
                         && (cur_node.end_tag_start.is_some_and(|s| s > self.offset)))
             {
-                let mut item = CompletionItem::default();
                 let tag = tag.clone().unwrap();
-                item.label = format!("/{}", tag);
-                item.kind = Some(CompletionItemKind::PROPERTY);
-                item.filter_text = Some(format!("/{}", tag));
-                item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
+                let mut text_edit = Some(CompletionTextEdit::Edit(TextEdit {
                     range,
                     new_text: format!("/{}{}", tag, close_tag),
                 }));
-                item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
+                let mut filter_text = Some(format!("/{}", tag));
                 let start_indent = self.get_line_indent(cur_node.start);
                 let end_indent = self.get_line_indent(after_open_bracket - 1);
                 if start_indent.is_some() && end_indent.is_some() && start_indent != end_indent {
                     let start_indent = start_indent.unwrap();
                     let end_indent = end_indent.unwrap();
                     let insert_text = format!("{}</{}{}", start_indent, tag, close_tag);
-                    item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
+                    text_edit = Some(CompletionTextEdit::Edit(TextEdit {
                         range: self.get_replace_range(
                             after_open_bracket - 1 - end_indent.len(),
                             self.offset,
                         ),
                         new_text: insert_text,
                     }));
-                    item.filter_text = Some(format!("{}</{}", end_indent, tag));
+                    filter_text = Some(format!("{}</{}", end_indent, tag));
                 }
-                self.result.items.push(item);
+                self.result.items.push(CompletionItem {
+                    label: format!("/{}", tag),
+                    kind: Some(CompletionItemKind::PROPERTY),
+                    filter_text,
+                    text_edit,
+                    insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+                    ..Default::default()
+                });
                 return;
             }
             cur = cur_node.parent.upgrade()
@@ -692,9 +703,6 @@ impl CompletionContext<'_> {
 
         for provider in &self.data_providers {
             for tag in provider.provide_tags() {
-                let mut item = CompletionItem::default();
-                item.label = format!("/{}", tag.name);
-                item.kind = Some(CompletionItemKind::PROPERTY);
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -706,12 +714,17 @@ impl CompletionContext<'_> {
                         does_support_markdown: self.does_support_markdown,
                     },
                 );
-                if let Some(documentation) = documentation {
-                    item.documentation = Some(Documentation::MarkupContent(documentation));
+                let documentation = if let Some(documentation) = documentation {
+                    Some(Documentation::MarkupContent(documentation))
                 } else {
-                    item.documentation = None;
-                }
-                self.result.items.push(item);
+                    None
+                };
+                self.result.items.push(CompletionItem {
+                    label: format!("/{}", tag.name),
+                    kind: Some(CompletionItemKind::PROPERTY),
+                    documentation,
+                    ..Default::default()
+                });
             }
         }
     }
@@ -726,19 +739,21 @@ impl CompletionContext<'_> {
             .is_ok_and(|m| m.is_void_element(tag, &self.void_elements))
         {
             let pos = self.document.position_at(tag_close_end as u32);
-            let mut item = CompletionItem::default();
-            item.label = format!("</{}>", tag);
-            item.kind = Some(CompletionItemKind::PROPERTY);
-            item.filter_text = Some(format!("</{}>", tag));
-            item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
+            let text_edit = Some(CompletionTextEdit::Edit(TextEdit {
                 range: Range {
                     start: pos,
                     end: pos,
                 },
                 new_text: format!("$0</{}>", tag),
             }));
-            item.insert_text_format = Some(InsertTextFormat::SNIPPET);
-            self.result.items.push(item);
+            self.result.items.push(CompletionItem {
+                label: format!("</{}>", tag),
+                kind: Some(CompletionItemKind::PROPERTY),
+                filter_text: Some(format!("</{}>", tag)),
+                text_edit,
+                insert_text_format: Some(InsertTextFormat::SNIPPET),
+                ..Default::default()
+            });
         }
     }
 
@@ -771,19 +786,20 @@ impl CompletionContext<'_> {
             for (entity, value) in entities {
                 if entity.ends_with(";") {
                     let label = format!("&{}", entity);
-                    let mut item = CompletionItem::default();
-                    item.label = label.clone();
-                    item.kind = Some(CompletionItemKind::KEYWORD);
-                    item.documentation = Some(Documentation::String(format!(
-                        "Character entity representing '{}",
-                        value
-                    )));
-                    item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
-                        range,
-                        new_text: label,
-                    }));
-                    item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
-                    self.result.items.push(item);
+                    self.result.items.push(CompletionItem {
+                        label: label.clone(),
+                        kind: Some(CompletionItemKind::KEYWORD),
+                        documentation: Some(Documentation::String(format!(
+                            "Character entity representing '{}",
+                            value
+                        ))),
+                        text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                            range,
+                            new_text: label,
+                        })),
+                        insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+                        ..Default::default()
+                    });
                 }
             }
         }
@@ -791,18 +807,19 @@ impl CompletionContext<'_> {
 
     fn suggest_doctype(&mut self, replace_start: usize, replace_end: usize) {
         let range = self.get_replace_range(replace_start, replace_end);
-        let mut item = CompletionItem::default();
-        item.label = "!DOCTYPE".to_string();
-        item.kind = Some(CompletionItemKind::PROPERTY);
-        item.documentation = Some(Documentation::String(
-            "A preamble for an HTML document.".to_string(),
-        ));
-        item.text_edit = Some(CompletionTextEdit::Edit(TextEdit {
-            range,
-            new_text: "!DOCTYPE html>".to_string(),
-        }));
-        item.insert_text_format = Some(InsertTextFormat::PLAIN_TEXT);
-        self.result.items.push(item);
+        self.result.items.push(CompletionItem {
+            label: "!DOCTYPE".to_string(),
+            kind: Some(CompletionItemKind::PROPERTY),
+            documentation: Some(Documentation::String(
+                "A preamble for an HTML document.".to_string(),
+            )),
+            text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                range,
+                new_text: "!DOCTYPE html>".to_string(),
+            })),
+            insert_text_format: Some(InsertTextFormat::PLAIN_TEXT),
+            ..Default::default()
+        });
     }
 
     fn get_existing_attributes(&self) -> HashMap<String, bool> {
