@@ -2213,6 +2213,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn support_script_type() {
+        test_completion_for(
+            r#"<script id="html-template" type="text/html"> <| </script>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "div",
+                    result_text: Some(
+                        r#"<script id="html-template" type="text/html"> <div </script>"#,
+                    ),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
