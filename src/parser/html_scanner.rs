@@ -29,7 +29,7 @@ impl Scanner<'_> {
             token_offset,
             token_error: None,
             stream,
-            emit_pseudo_close_tags: true,
+            emit_pseudo_close_tags: false,
             has_space_after_tag: false,
             last_tag: None,
             last_attribute_name: None,
@@ -322,8 +322,12 @@ impl Scanner<'_> {
                         self.stream.advance(1); // consume quote
                     }
                     if self.last_attribute_name == Some("type".to_string()) {
-                        let s =
-                            self.stream.get_source()[offset + 1..self.stream.pos() - 1].to_string();
+                        let s = self.stream.get_source()[if offset + 1 > self.stream.pos() - 1 {
+                            self.stream.pos() - 1..offset + 1
+                        } else {
+                            offset + 1..self.stream.pos() - 1
+                        }]
+                        .to_string();
                         self.last_type_value = if s.len() != 0 { Some(s) } else { None }
                     }
                     self.state = ScannerState::WithinTag;

@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct HTMLCompletion {
-    ls_options: Arc<LanguageServiceOptions>,
+    _ls_options: Arc<LanguageServiceOptions>,
     data_manager: Arc<RwLock<HTMLDataManager>>,
     supports_markdown: bool,
     completion_participants: Vec<Box<dyn ICompletionParticipant>>,
@@ -42,7 +42,7 @@ impl HTMLCompletion {
         data_manager: Arc<RwLock<HTMLDataManager>>,
     ) -> HTMLCompletion {
         HTMLCompletion {
-            ls_options: Arc::clone(&ls_options),
+            _ls_options: Arc::clone(&ls_options),
             data_manager,
             supports_markdown: HTMLCompletion::does_support_markdown(Arc::clone(&ls_options)),
             completion_participants: vec![],
@@ -61,7 +61,7 @@ impl HTMLCompletion {
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
-        document_context: impl DocumentContext,
+        _document_context: impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
     ) -> CompletionList {
         let data_manager = self.data_manager.read().unwrap();
@@ -242,7 +242,7 @@ impl HTMLCompletion {
                     }
                 }
                 TokenType::EndTagOpen => {
-                    if offset < scanner.get_token_end() {
+                    if offset <= scanner.get_token_end() {
                         let after_open_bracket = scanner.get_token_offset() + 1;
                         let end_offset = content.scan_next_for_end_pos(
                             &mut scanner,
@@ -259,7 +259,7 @@ impl HTMLCompletion {
                     }
                 }
                 TokenType::EndTag => {
-                    if offset < scanner.get_token_end() {
+                    if offset <= scanner.get_token_end() {
                         let mut start = scanner.get_token_offset() - 1;
                         while start > 0 {
                             let ch = text.bytes().nth(start).unwrap();
@@ -270,7 +270,7 @@ impl HTMLCompletion {
                                     scanner.get_token_end(),
                                 );
                                 return result;
-                            } else if !is_white_space(&ch.to_string()) {
+                            } else if !is_white_space(std::str::from_utf8(&[ch]).unwrap()) {
                                 break;
                             }
                             start -= 1;
@@ -400,7 +400,11 @@ impl CompletionContext<'_> {
         {
             replace_end += 1;
         }
-        let current_attribute = &text[name_start..name_end];
+        let current_attribute = if name_start > name_end {
+            &text[name_end..name_start]
+        } else {
+            &text[name_start..name_end]
+        };
         let range = self.get_replace_range(name_start, replace_end);
         let mut value = "";
         if !is_followed_by(
@@ -426,7 +430,7 @@ impl CompletionContext<'_> {
 
         for provider in &self.data_providers {
             for attr in provider.provide_attributes(&self.current_tag.as_ref().unwrap()) {
-                if existing_attributes.contains_key(&attr.name) {
+                if existing_attributes.get(&attr.name).is_some_and(|v| *v) {
                     continue;
                 }
                 existing_attributes.insert(attr.name.clone(), true);
@@ -434,7 +438,7 @@ impl CompletionContext<'_> {
                 let mut code_snippet = attr.name.clone();
                 let mut command: Option<Command> = None;
 
-                if attr.value_set.as_ref().is_some_and(|v| v != "v") && value.len() > 0 {
+                if !(attr.value_set.as_ref().is_some_and(|v| v == "v") || value.len() == 0) {
                     code_snippet = code_snippet + value;
                     if attr.value_set.is_some() || attr.name == "style" {
                         command = Some(Command {
@@ -501,7 +505,7 @@ impl CompletionContext<'_> {
                     && !data_attributes.contains_key(&attr[..])
                     && !existing_attributes.contains_key(attr)
                 {
-                    data_attributes.insert(attr.to_string(), format!(r#"{data_attr}$1="$2""#));
+                    data_attributes.insert(attr.to_string(), format!(r#"{attr}="$1""#));
                 }
             }
             for child in &node.children {
@@ -733,7 +737,7 @@ impl CompletionContext<'_> {
         if self.settings.is_some() && self.settings.unwrap().hide_auto_complete_proposals {
             return;
         }
-        if self
+        if !self
             .data_manager
             .read()
             .is_ok_and(|m| m.is_void_element(tag, &self.void_elements))
@@ -834,7 +838,7 @@ impl CompletionContext<'_> {
         let mut start = offset;
         while start > 0 {
             let ch = self.text.as_bytes()[start - 1];
-            if [b'\n', b'\r'].contains(&ch) {
+            if b'\n' == ch {
                 return Some(self.text[start..offset].to_string());
             }
             if !is_white_space(std::str::from_utf8(&[ch]).unwrap()) {
@@ -851,7 +855,7 @@ fn is_white_space(text: &str) -> bool {
 }
 
 fn is_quote(text: &str) -> bool {
-    Regex::new(r#"^["']*"#).unwrap().is_match(text)
+    Regex::new(r#"^["']*$"#).unwrap().is_match(text)
 }
 
 fn is_followed_by(
@@ -1007,7 +1011,8 @@ mod tests {
         assert_eq!(
             matches.len(),
             1,
-            "{} should only existing once: Actual: ",
+            "{} should only existing once: Actual: {}",
+            expected.label,
             completions
                 .items
                 .iter()
@@ -1138,6 +1143,947 @@ mod tests {
                         ..Default::default()
                     },
                 ],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            "<h|",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "html",
+                        result_text: Some("<html"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "h1",
+                        result_text: Some("<h1"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "header",
+                        result_text: Some("<header"),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<input|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "input",
+                    result_text: Some("<input"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<inp|ut",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "input",
+                    result_text: Some("<input"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<|inp",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "input",
+                    result_text: Some("<input"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<input |",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "type",
+                        result_text: Some(r#"<input type="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input style="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "onmousemove",
+                        result_text: Some(r#"<input onmousemove="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<input t|",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "type",
+                        result_text: Some(r#"<input type="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "tabindex",
+                        result_text: Some(r#"<input tabindex="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<input t|ype",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "type",
+                        result_text: Some(r#"<input type="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "tabindex",
+                        result_text: Some(r#"<input tabindex="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input t|ype="text""#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "type",
+                        result_text: Some(r#"<input type="text""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "tabindex",
+                        result_text: Some(r#"<input tabindex="text""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="text" |"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input type="text" style="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "type",
+                        not_available: Some(true),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "size",
+                        result_text: Some(r#"<input type="text" size="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input | type="text""#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input style="$1" type="text""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "type",
+                        not_available: Some(true),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "size",
+                        result_text: Some(r#"<input size="$1" type="text""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="text" type="number" |"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input type="text" type="number" style="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "type",
+                        not_available: Some(true),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "size",
+                        result_text: Some(r#"<input type="text" type="number" size="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="text" s|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input type="text" style="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "src",
+                        result_text: Some(r#"<input type="text" src="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "size",
+                        result_text: Some(r#"<input type="text" size="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="text" s|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input type="text" style="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "src",
+                        result_text: Some(r#"<input type="text" src="$1""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "size",
+                        result_text: Some(r#"<input type="text" size="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            r#"<input di| type="text""#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "disabled",
+                        result_text: Some(r#"<input disabled type="text""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "dir",
+                        result_text: Some(r#"<input dir="$1" type="text""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            r#"<input disabled | type="text""#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "dir",
+                        result_text: Some(r#"<input disabled dir="$1" type="text""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "style",
+                        result_text: Some(r#"<input disabled style="$1" type="text""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            r#"<input type=|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "text",
+                        result_text: Some(r#"<input type="text""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "checkbox",
+                        result_text: Some(r#"<input type="checkbox""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="c|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "color",
+                        result_text: Some(r#"<input type="color"#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "checkbox",
+                        result_text: Some(r#"<input type="checkbox"#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type="|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "color",
+                        result_text: Some(r#"<input type="color"#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "checkbox",
+                        result_text: Some(r#"<input type="checkbox"#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input type= |"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "color",
+                        result_text: Some(r#"<input type= "color""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "checkbox",
+                        result_text: Some(r#"<input type= "checkbox""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input src="c" type="color|" "#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "color",
+                    result_text: Some(r#"<input src="c" type="color" "#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<iframe sandbox="allow-forms |"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "allow-modals",
+                    result_text: Some(r#"<iframe sandbox="allow-forms allow-modals"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<iframe sandbox="allow-forms allow-modals|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "allow-modals",
+                    result_text: Some(r#"<iframe sandbox="allow-forms allow-modals"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<iframe sandbox="allow-forms all|""#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "allow-modals",
+                    result_text: Some(r#"<iframe sandbox="allow-forms allow-modals""#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<iframe sandbox="allow-forms a|llow-modals ""#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "allow-modals",
+                    result_text: Some(r#"<iframe sandbox="allow-forms allow-modals ""#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<input src="c" type=color| "#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "color",
+                    result_text: Some(r#"<input src="c" type="color" "#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<div dir=|></div>"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "ltr",
+                        result_text: Some(r#"<div dir="ltr"></div>"#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "rtl",
+                        result_text: Some(r#"<div dir="rtl"></div>"#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<ul><|>"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "/ul",
+                        result_text: Some(r#"<ul></ul>"#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "li",
+                        result_text: Some(r#"<ul><li>"#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<ul><li><|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "/li",
+                        result_text: Some(r#"<ul><li></li>"#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "a",
+                        result_text: Some(r#"<ul><li><a"#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<goo></|>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/goo",
+                    result_text: Some(r#"<goo></goo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<foo></f|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo></foo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<foo></f|o"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo></foo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<foo></|fo"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo></foo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<foo></ |>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo></foo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<span></ s|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/span",
+                    result_text: Some(r#"<span></span>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<li><br></ |>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/li",
+                    result_text: Some(r#"<li><br></li>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<li/|>",
+            Expected {
+                count: Some(0),
+                items: vec![],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "  <div/|   ",
+            Expected {
+                count: Some(0),
+                items: vec![],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<foo><br/></ f|>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo><br/></foo>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<li><div/></|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/li",
+                    result_text: Some(r#"<li><div/></li>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<li><br/|>",
+            Expected {
+                count: Some(0),
+                items: vec![],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<li><br>a/|",
+            Expected {
+                count: Some(0),
+                items: vec![],
+            },
+            None,
+            None,
+        );
+
+        test_completion_for(
+            r#"<foo><bar></bar></|   "#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/foo",
+                    result_text: Some(r#"<foo><bar></bar></foo>   "#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<div>\n  <form>\n    <div>\n      <label></label>\n      <|\n    </div>\n  </form></div>",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "span",
+                        result_text: Some(
+                            "<div>\n  <form>\n    <div>\n      <label></label>\n      <span\n    </div>\n  </form></div>",
+                        ),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "/div",
+                        result_text: Some(
+                            "<div>\n  <form>\n    <div>\n      <label></label>\n    </div>\n    </div>\n  </form></div>",
+                        ),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<body><div><div></div></div></|  >"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/body",
+                    result_text: Some(r#"<body><div><div></div></div></body  >"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<body>\n  <div>\n    </|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/div",
+                    result_text: Some("<body>\n  <div>\n  </div>"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<div><a hre|</div>",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "href",
+                    result_text: Some(r#"<div><a href="$1"</div>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<a><b>foo</b><|f>",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "/a",
+                        result_text: Some("<a><b>foo</b></a>"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        not_available: Some(true),
+                        label: "/f",
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<a><b>foo</b><| bar.",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "/a",
+                        result_text: Some("<a><b>foo</b></a> bar."),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        not_available: Some(true),
+                        label: "/bar",
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<div><h1><br><span></span><img></| </h1></div>",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/h1",
+                    result_text: Some(r#"<div><h1><br><span></span><img></h1> </h1></div>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<div>|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "</div>",
+                    result_text: Some(r#"<div>$0</div>"#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<div>|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    not_available: Some(true),
+                    label: "</div>",
+                    ..Default::default()
+                }],
+            },
+            Some(CompletionConfiguration {
+                hide_auto_complete_proposals: true,
+                attribute_default_value: Quotes::Double,
+                provider: HashMap::new(),
+            }),
+            None,
+        );
+        test_completion_for(
+            r#"<div d|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "data-",
+                    result_text: Some(r#"<div data-$1="$2""#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<div no-data-test="no-data" d|"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    not_available: Some(true),
+                    label: "no-data-test",
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<div data-custom="test"><div d|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "data-",
+                        result_text: Some(r#"<div data-custom="test"><div data-$1="$2""#),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "data-custom",
+                        result_text: Some(r#"<div data-custom="test"><div data-custom="$1""#),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div d|"#,
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "data-",
+                        result_text: Some(
+                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-$1="$2""#,
+                        ),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "data-custom",
+                        result_text: Some(
+                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom="$1""#,
+                        ),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "data-custom-two",
+                        result_text: Some(
+                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom-two="$1""#,
+                        ),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" inc|></div></body>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "data-ng-include",
+                    result_text: Some(
+                        r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" data-ng-include="$1"></div></body>"#,
+                    ),
+                    ..Default::default()
+                }],
             },
             None,
             None,
