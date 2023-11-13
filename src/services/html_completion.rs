@@ -2118,6 +2118,82 @@ mod tests {
         );
     }
 
+    #[test]
+    fn case_sensitivity() {
+        test_completion_for(
+            "<LI></|",
+            Expected {
+                count: None,
+                items: vec![
+                    ItemDescription {
+                        label: "/LI",
+                        result_text: Some("<LI></LI>"),
+                        ..Default::default()
+                    },
+                    ItemDescription {
+                        label: "/li",
+                        not_available: Some(true),
+                        ..Default::default()
+                    },
+                ],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<lI></|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "/lI",
+                    result_text: Some("<lI></lI>"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<iNpUt |",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "type",
+                    result_text: Some(r#"<iNpUt type="$1""#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<INPUT TYPE=|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "color",
+                    result_text: Some(r#"<INPUT TYPE="color""#),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<dIv>|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "</dIv>",
+                    result_text: Some("<dIv>$0</dIv>"),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,

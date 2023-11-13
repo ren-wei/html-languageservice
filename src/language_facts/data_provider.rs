@@ -66,7 +66,7 @@ impl IHTMLDataProvider for HTMLDataProvider {
     fn provide_attributes(&self, tag: &str) -> Vec<&IAttributeData> {
         let mut attributes = vec![];
 
-        let tag_entry_index = self.tag_map.get(tag);
+        let tag_entry_index = self.tag_map.get(&tag.to_lowercase());
         if let Some(tag_entry_index) = tag_entry_index {
             let tag_entry = &self.tags[*tag_entry_index];
             for attribute in &tag_entry.attributes {
@@ -85,7 +85,7 @@ impl IHTMLDataProvider for HTMLDataProvider {
 
         let attribute = attribute.to_lowercase();
 
-        let tag_entry = self.tag_map.get(tag);
+        let tag_entry = self.tag_map.get(&tag.to_lowercase());
         if let Some(tag_entry_index) = tag_entry {
             let tag_entry = &self.tags[*tag_entry_index];
             for a in &tag_entry.attributes {
