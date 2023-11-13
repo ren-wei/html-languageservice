@@ -11,7 +11,9 @@ use lsp_textdocument::FullTextDocument;
 use lsp_types::{ClientCapabilities, CompletionList, Position};
 use parser::html_parse::{HTMLDocument, HTMLParser};
 use parser::html_scanner::{Scanner, ScannerState};
-use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCompletion};
+use services::html_completion::{
+    CompletionConfiguration, DocumentContext, HTMLCompletion, ICompletionParticipant,
+};
 
 pub struct LanguageService {
     data_manager: Arc<RwLock<HTMLDataManager>>,
@@ -69,6 +71,14 @@ impl LanguageService {
             document_context,
             settings,
         )
+    }
+
+    pub fn set_completion_participants(
+        &mut self,
+        registered_completion_participants: Vec<Box<dyn ICompletionParticipant>>,
+    ) {
+        self.html_completion
+            .set_completion_participants(registered_completion_participants);
     }
 }
 
