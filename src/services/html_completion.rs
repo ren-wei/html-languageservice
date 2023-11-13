@@ -25,7 +25,7 @@ use crate::{
         html_parse::{HTMLDocument, Node},
         html_scanner::{Scanner, ScannerState, TokenType},
     },
-    utils::strings::is_letter_or_digit,
+    utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
     LanguageServiceOptions,
 };
 
@@ -44,7 +44,7 @@ impl HTMLCompletion {
         HTMLCompletion {
             _ls_options: Arc::clone(&ls_options),
             data_manager,
-            supports_markdown: HTMLCompletion::does_support_markdown(Arc::clone(&ls_options)),
+            supports_markdown: does_support_markdown(Arc::clone(&ls_options)),
             completion_participants: vec![],
         }
     }
@@ -287,23 +287,6 @@ impl HTMLCompletion {
         }
 
         result
-    }
-
-    fn does_support_markdown(ls_options: Arc<LanguageServiceOptions>) -> bool {
-        if let Some(client_capabilities) = &ls_options.client_capabilities {
-            if let Some(text_document) = &client_capabilities.text_document {
-                if let Some(completion) = &text_document.completion {
-                    if let Some(completion_item) = &completion.completion_item {
-                        if let Some(documentation_format) = &completion_item.documentation_format {
-                            return documentation_format.contains(&lsp_types::MarkupKind::Markdown);
-                        }
-                    }
-                }
-            }
-        } else {
-            return true;
-        }
-        false
     }
 }
 
