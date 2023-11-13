@@ -2232,13 +2232,231 @@ mod tests {
         );
     }
 
+    #[test]
+    fn complete_aria() {
+        let expected_aria_attributes = vec![
+            ItemDescription {
+                label: "aria-activedescendant",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-atomic",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-autocomplete",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-busy",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-checked",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-colcount",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-colindex",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-colspan",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-controls",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-current",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-describedby",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-disabled",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-dropeffect",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-errormessage",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-expanded",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-flowto",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-grabbed",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-haspopup",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-hidden",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-invalid",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-label",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-labelledby",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-level",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-live",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-modal",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-multiline",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-multiselectable",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-orientation",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-owns",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-placeholder",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-posinset",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-pressed",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-readonly",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-relevant",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-required",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-roledescription",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-rowcount",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-rowindex",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-rowspan",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-selected",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-setsize",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-sort",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-valuemax",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-valuemin",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-valuenow",
+                ..Default::default()
+            },
+            ItemDescription {
+                label: "aria-valuetext",
+                ..Default::default()
+            },
+        ];
+
+        test_completion_for(
+            "<div  |> </div >",
+            Expected {
+                count: None,
+                items: expected_aria_attributes.clone(),
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<span  |> </span >",
+            Expected {
+                count: None,
+                items: expected_aria_attributes.clone(),
+            },
+            None,
+            None,
+        );
+        test_completion_for(
+            "<input  |> </input >",
+            Expected {
+                count: None,
+                items: expected_aria_attributes.clone(),
+            },
+            None,
+            None,
+        );
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
         items: Vec<ItemDescription>,
     }
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     struct ItemDescription {
         label: &'static str,
         result_text: Option<&'static str>,
