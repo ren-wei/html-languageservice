@@ -934,6 +934,8 @@ pub enum Quotes {
 
 #[cfg(test)]
 mod tests {
+    use lsp_types::{MarkupContent, MarkupKind};
+
     use crate::LanguageService;
 
     use super::*;
@@ -2082,6 +2084,32 @@ mod tests {
                     result_text: Some(
                         r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" data-ng-include="$1"></div></body>"#,
                     ),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+    }
+
+    #[test]
+    fn references() {
+        let doc =
+			"The div element has no special meaning at all. It represents its children. It can be used with the class, lang, and title attributes to mark up semantics common to a group of consecutive elements.".to_string() +
+			"\n\n" +
+			"[MDN Reference](https://developer.mozilla.org/docs/Web/HTML/Element/div)";
+
+        test_completion_for(
+            "<d|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "div",
+                    result_text: Some("<div"),
+                    documentation: Some(Documentation::MarkupContent(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: doc,
+                    })),
                     ..Default::default()
                 }],
             },
