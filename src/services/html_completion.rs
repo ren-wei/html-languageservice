@@ -2450,6 +2450,78 @@ mod tests {
         );
     }
 
+    #[test]
+    fn settings() {
+        test_completion_for(
+            "<|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "div",
+                    not_available: Some(true),
+                    ..Default::default()
+                }],
+            },
+            Some(CompletionConfiguration {
+                hide_auto_complete_proposals: false,
+                attribute_default_value: Quotes::Double,
+                provider: HashMap::from([("html5".to_string(), false)]),
+            }),
+            None,
+        );
+        test_completion_for(
+            "<div clas|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "class",
+                    result_text: Some(r#"<div class="$1""#),
+                    ..Default::default()
+                }],
+            },
+            Some(CompletionConfiguration {
+                hide_auto_complete_proposals: false,
+                attribute_default_value: Quotes::Double,
+                provider: HashMap::new(),
+            }),
+            None,
+        );
+        test_completion_for(
+            "<div clas|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "class",
+                    result_text: Some("<div class='$1'"),
+                    ..Default::default()
+                }],
+            },
+            Some(CompletionConfiguration {
+                hide_auto_complete_proposals: false,
+                attribute_default_value: Quotes::Single,
+                provider: HashMap::new(),
+            }),
+            None,
+        );
+        test_completion_for(
+            "<div clas|",
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "class",
+                    result_text: Some("<div class=$1"),
+                    ..Default::default()
+                }],
+            },
+            Some(CompletionConfiguration {
+                hide_auto_complete_proposals: false,
+                attribute_default_value: Quotes::None,
+                provider: HashMap::new(),
+            }),
+            None,
+        );
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
