@@ -2194,6 +2194,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn handlebar_completion() {
+        test_completion_for(
+            r#"<script id="entry-template" type="text/x-handlebars-template"> <| </script>"#,
+            Expected {
+                count: None,
+                items: vec![ItemDescription {
+                    label: "div",
+                    result_text: Some(
+                        r#"<script id="entry-template" type="text/x-handlebars-template"> <div </script>"#,
+                    ),
+                    ..Default::default()
+                }],
+            },
+            None,
+            None,
+        );
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
