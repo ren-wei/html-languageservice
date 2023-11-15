@@ -8,17 +8,19 @@ use std::sync::{Arc, RwLock};
 
 use language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider};
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{ClientCapabilities, CompletionList, Position};
+use lsp_types::{ClientCapabilities, CompletionList, Hover, Position};
 use parser::html_parse::{HTMLDocument, HTMLParser};
 use parser::html_scanner::{Scanner, ScannerState};
 use services::html_completion::{
     CompletionConfiguration, DocumentContext, HTMLCompletion, ICompletionParticipant,
 };
+use services::html_hover::{HTMLHover, HoverSettings};
 
 pub struct LanguageService {
     data_manager: Arc<RwLock<HTMLDataManager>>,
     html_parse: HTMLParser,
     html_completion: HTMLCompletion,
+    html_hover: HTMLHover,
 }
 
 impl LanguageService {
@@ -34,6 +36,7 @@ impl LanguageService {
             data_manager: Arc::clone(&data_manager),
             html_parse: HTMLParser::new(Arc::clone(&data_manager)),
             html_completion: HTMLCompletion::new(Arc::clone(&options), Arc::clone(&data_manager)),
+            html_hover: HTMLHover::new(Arc::clone(&options), Arc::clone(&data_manager)),
         }
     }
 
@@ -79,6 +82,17 @@ impl LanguageService {
     ) {
         self.html_completion
             .set_completion_participants(registered_completion_participants);
+    }
+
+    pub fn do_hover(
+        &self,
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+        options: Option<HoverSettings>,
+    ) -> Option<Hover> {
+        self.html_hover
+            .do_hover(document, position, html_document, options)
     }
 }
 
