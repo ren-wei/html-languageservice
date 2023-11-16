@@ -61,7 +61,7 @@ impl HTMLHover {
         let data_providers: Vec<_> = data_manager
             .get_data_providers()
             .iter()
-            .filter(|p| p.is_applicable(document.language_id()))
+            .filter(|p| p.read().unwrap().is_applicable(document.language_id()))
             .collect();
 
         let options = if options.is_some() {
@@ -158,7 +158,7 @@ impl HTMLHover {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for tag in provider.provide_tags() {
+            for tag in provider.read().unwrap().provide_tags() {
                 if tag.name.to_lowercase() == cur_tag.to_lowercase() {
                     let markup_content = generate_documentation(
                         GenerateDocumentationItem {
@@ -202,7 +202,7 @@ impl HTMLHover {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for attr in provider.provide_attributes(cur_tag) {
+            for attr in provider.read().unwrap().provide_attributes(cur_tag) {
                 if cur_attr == attr.name && attr.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -243,7 +243,7 @@ impl HTMLHover {
     ) -> Option<Hover> {
         for provider in &context.data_providers {
             let mut hover = None;
-            for attr_value in provider.provide_values(cur_tag, cur_attr) {
+            for attr_value in provider.read().unwrap().provide_values(cur_tag, cur_attr) {
                 if cur_attr_value == attr_value.name && attr_value.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -497,7 +497,7 @@ pub struct HoverSettings {
 
 struct HoverContext<'a> {
     options: HoverSettings,
-    data_providers: Vec<&'a Box<dyn IHTMLDataProvider>>,
+    data_providers: Vec<&'a Arc<RwLock<dyn IHTMLDataProvider>>>,
     offset: usize,
     position: &'a Position,
     document: &'a FullTextDocument,

@@ -26,7 +26,7 @@ pub struct LanguageService {
 impl LanguageService {
     pub fn new(
         options: Arc<LanguageServiceOptions>,
-        custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+        custom_data_providers: Option<Vec<Arc<RwLock<dyn IHTMLDataProvider>>>>,
     ) -> LanguageService {
         let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(
             true,
@@ -43,7 +43,7 @@ impl LanguageService {
     pub fn set_data_providers(
         &mut self,
         built_in: bool,
-        providers: Vec<Box<dyn IHTMLDataProvider>>,
+        providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
     ) {
         self.data_manager
             .write()
@@ -78,7 +78,7 @@ impl LanguageService {
 
     pub fn set_completion_participants(
         &mut self,
-        registered_completion_participants: Vec<Box<dyn ICompletionParticipant>>,
+        registered_completion_participants: Vec<Arc<dyn ICompletionParticipant>>,
     ) {
         self.html_completion
             .set_completion_participants(registered_completion_participants);

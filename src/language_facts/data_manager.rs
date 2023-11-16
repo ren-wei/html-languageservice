@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
 
@@ -7,13 +9,13 @@ use super::{
 };
 
 pub struct HTMLDataManager {
-    data_providers: Vec<Box<dyn IHTMLDataProvider>>,
+    data_providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
 }
 
 impl HTMLDataManager {
     pub fn new(
         use_default_data_provider: bool,
-        custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+        custom_data_providers: Option<Vec<Arc<RwLock<dyn IHTMLDataProvider>>>>,
     ) -> HTMLDataManager {
         let mut data_manager = HTMLDataManager {
             data_providers: vec![],
@@ -28,37 +30,42 @@ impl HTMLDataManager {
     pub fn set_data_providers(
         &mut self,
         built_in: bool,
-        mut providers: Vec<Box<dyn IHTMLDataProvider>>,
+        mut providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
     ) {
         self.data_providers.clear();
         if built_in {
             let data = serde_json::from_str(HTML_DATA).unwrap();
             self.data_providers
-                .push(Box::new(HTMLDataProvider::new("html5".to_string(), data)));
+                .push(Arc::new(RwLock::new(HTMLDataProvider::new(
+                    "html5".to_string(),
+                    data,
+                ))));
         }
         self.data_providers.append(&mut providers);
     }
 
-    pub fn get_data_providers(&self) -> &Vec<Box<dyn IHTMLDataProvider>> {
+    pub fn get_data_providers(&self) -> &Vec<Arc<RwLock<dyn IHTMLDataProvider>>> {
         &self.data_providers
     }
 
-    pub fn is_void_element(&self, e: &str, void_elements: &Vec<&str>) -> bool {
-        void_elements.contains(&e)
+    pub fn is_void_element(&self, e: &str, void_elements: &Vec<String>) -> bool {
+        void_elements.contains(&e.to_string())
     }
 
-    pub fn get_void_elements(&self, language_id: &str) -> Vec<&str> {
+    pub fn get_void_elements(&self, language_id: &str) -> Vec<String> {
         let data_providers = self
             .data_providers
             .iter()
-            .filter(|p| p.is_applicable(language_id));
-        let mut void_tags: Vec<&str> = vec![];
+            .filter(|p| p.read().unwrap().is_applicable(language_id));
+        let mut void_tags: Vec<String> = vec![];
         for provider in data_providers {
             provider
+                .read()
+                .unwrap()
                 .provide_tags()
                 .iter()
                 .filter(|tag| tag.void.is_some_and(|v| v))
-                .for_each(|tag| void_tags.push(&tag.name))
+                .for_each(|tag| void_tags.push(tag.name.clone()))
         }
         void_tags.sort();
         void_tags
