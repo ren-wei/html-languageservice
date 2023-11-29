@@ -4,6 +4,8 @@ pub mod parser;
 pub mod services;
 pub mod utils;
 
+pub use parser::html_parse::parse_html_document;
+
 use std::sync::{Arc, RwLock};
 
 use language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider};

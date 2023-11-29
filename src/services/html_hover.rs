@@ -50,12 +50,16 @@ impl HTMLHover {
         let node = html_document.find_node_at(offset);
         let text = document.get_content(None);
 
-        if node.is_none() || node.clone().is_some_and(|v| v.borrow().tag.is_none()) {
+        if node.is_none()
+            || node
+                .clone()
+                .is_some_and(|v| v.read().unwrap().tag.is_none())
+        {
             return None;
         }
 
         let _node = node.unwrap();
-        let node = _node.borrow();
+        let node = _node.read().unwrap();
 
         let data_manager = self.data_manager.read().unwrap();
         let data_providers: Vec<_> = data_manager

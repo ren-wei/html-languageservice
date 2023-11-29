@@ -1,7 +1,5 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
-    rc::Rc,
     sync::{Arc, RwLock},
 };
 
@@ -99,7 +97,7 @@ impl HTMLCompletion {
             data_providers,
             void_elements,
             settings,
-            node: Rc::clone(&node),
+            node: Arc::clone(&node),
             current_tag: None,
             does_support_markdown: self.supports_markdown,
             html_document,
@@ -109,7 +107,7 @@ impl HTMLCompletion {
             data_manager: Arc::clone(&self.data_manager),
         };
 
-        let node = node.borrow();
+        let node = node.read().unwrap();
 
         let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent);
 
@@ -298,7 +296,7 @@ struct CompletionContext<'a> {
     data_providers: Vec<&'a Arc<RwLock<dyn IHTMLDataProvider>>>,
     void_elements: Vec<String>,
     settings: Option<&'a CompletionConfiguration>,
-    node: Rc<RefCell<Node>>,
+    node: Arc<RwLock<Node>>,
     current_tag: Option<String>,
     does_support_markdown: bool,
     html_document: &'a HTMLDocument,
@@ -482,11 +480,11 @@ impl CompletionContext<'_> {
 
         fn add_node_data_attributes(
             data_attributes: &mut HashMap<String, String>,
-            node: Rc<RefCell<Node>>,
+            node: Arc<RwLock<Node>>,
             existing_attributes: &HashMap<String, bool>,
             data_attr: &str,
         ) {
-            let node = node.borrow();
+            let node = node.read().unwrap();
             for attr in node.attribute_names() {
                 if attr.starts_with(data_attr)
                     && !data_attributes.contains_key(&attr[..])
@@ -498,7 +496,7 @@ impl CompletionContext<'_> {
             for child in &node.children {
                 add_node_data_attributes(
                     data_attributes,
-                    Rc::clone(child),
+                    Arc::clone(child),
                     existing_attributes,
                     data_attr,
                 );
@@ -508,7 +506,7 @@ impl CompletionContext<'_> {
         for root in &self.html_document.roots {
             add_node_data_attributes(
                 &mut data_attributes,
-                Rc::clone(root),
+                Arc::clone(root),
                 existing_attributes,
                 data_attr,
             );
@@ -642,13 +640,13 @@ impl CompletionContext<'_> {
         } else {
             ">"
         };
-        let mut cur = Some(Rc::clone(&self.node));
+        let mut cur = Some(Arc::clone(&self.node));
         if in_open_tag {
-            cur = cur.unwrap().borrow().parent.upgrade();
+            cur = cur.unwrap().read().unwrap().parent.upgrade();
         }
         while cur.is_some() {
             let c = cur.unwrap();
-            let cur_node = c.borrow();
+            let cur_node = c.read().unwrap();
             let tag = &cur_node.tag;
             if tag.is_some()
                 && (!cur_node.closed
@@ -815,7 +813,7 @@ impl CompletionContext<'_> {
 
     fn get_existing_attributes(&self) -> HashMap<String, bool> {
         let mut map: HashMap<String, bool> = HashMap::new();
-        for name in self.node.borrow().attribute_names() {
+        for name in self.node.read().unwrap().attribute_names() {
             map.insert((*name).to_string(), true);
         }
         map

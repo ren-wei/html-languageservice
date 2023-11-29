@@ -1,8 +1,6 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
-    rc::{Rc, Weak},
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
 };
 
 use lsp_textdocument::FullTextDocument;
@@ -14,12 +12,13 @@ use crate::{
 
 use super::html_scanner::ScannerState;
 
+#[derive(Debug)]
 pub struct Node {
     pub tag: Option<String>,
     pub start: usize,
     pub end: usize,
-    pub children: Vec<Rc<RefCell<Node>>>,
-    pub parent: Weak<RefCell<Node>>,
+    pub children: Vec<Arc<RwLock<Node>>>,
+    pub parent: Weak<RwLock<Node>>,
     pub closed: bool,
     pub start_tag_end: Option<usize>,
     pub end_tag_start: Option<usize>,
@@ -30,8 +29,8 @@ impl Node {
     pub fn new(
         start: usize,
         end: usize,
-        children: Vec<Rc<RefCell<Node>>>,
-        parent: Weak<RefCell<Node>>,
+        children: Vec<Arc<RwLock<Node>>>,
+        parent: Weak<RwLock<Node>>,
     ) -> Node {
         Node {
             tag: None,
@@ -61,36 +60,40 @@ impl Node {
         }
     }
 
-    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
-        Some(Rc::clone(self.children.first()?))
+    pub fn first_child(&self) -> Option<Arc<RwLock<Node>>> {
+        Some(Arc::clone(self.children.first()?))
     }
 
-    pub fn last_child(&self) -> Option<Rc<RefCell<Node>>> {
-        Some(Rc::clone(self.children.last()?))
+    pub fn last_child(&self) -> Option<Arc<RwLock<Node>>> {
+        Some(Arc::clone(self.children.last()?))
     }
 
-    pub fn find_node_before(node: Rc<RefCell<Node>>, offset: usize) -> Rc<RefCell<Node>> {
+    pub fn find_node_before(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
         let idx = if let Some((idx, _)) = node
-            .borrow()
+            .read()
+            .unwrap()
             .children
             .iter()
             .enumerate()
-            .find(|(_, ref c)| offset <= c.borrow().start)
+            .find(|(_, ref c)| offset <= c.read().unwrap().start)
         {
             idx
         } else {
-            node.borrow().children.len()
+            node.read().unwrap().children.len()
         };
         if idx > 0 {
-            let child = Rc::clone(&node.borrow().children[idx - 1]);
-            if offset > child.borrow().start {
-                if offset < child.borrow().end {
+            let child = Arc::clone(&node.read().unwrap().children[idx - 1]);
+            if offset > child.read().unwrap().start {
+                if offset < child.read().unwrap().end {
                     return Node::find_node_before(child, offset);
                 }
                 if child
-                    .borrow()
+                    .read()
+                    .unwrap()
                     .last_child()
-                    .is_some_and(|last_child| last_child.borrow().end == child.borrow().end)
+                    .is_some_and(|last_child| {
+                        last_child.read().unwrap().end == child.read().unwrap().end
+                    })
                 {
                     return Node::find_node_before(child, offset);
                 }
@@ -100,22 +103,23 @@ impl Node {
         node
     }
 
-    pub fn find_node_at(node: Rc<RefCell<Node>>, offset: usize) -> Rc<RefCell<Node>> {
+    pub fn find_node_at(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
         let idx = if let Some((idx, _)) = node
-            .borrow()
+            .read()
+            .unwrap()
             .children
             .iter()
             .enumerate()
-            .find(|(_, ref c)| offset <= c.borrow().start)
+            .find(|(_, ref c)| offset <= c.read().unwrap().start)
         {
             idx
         } else {
-            node.borrow().children.len()
+            node.read().unwrap().children.len()
         };
 
         if idx > 0 {
-            let child = Rc::clone(&node.borrow().children[idx - 1]);
-            if offset > child.borrow().start && offset <= child.borrow().end {
+            let child = Arc::clone(&node.read().unwrap().children[idx - 1]);
+            if offset > child.read().unwrap().start && offset <= child.read().unwrap().end {
                 return Node::find_node_at(child, offset);
             }
         }
@@ -124,31 +128,34 @@ impl Node {
 }
 
 pub struct HTMLDocument {
-    pub roots: Vec<Rc<RefCell<Node>>>,
+    pub roots: Vec<Arc<RwLock<Node>>>,
 }
 
 impl HTMLDocument {
-    pub fn find_node_before(&self, offset: usize) -> Option<Rc<RefCell<Node>>> {
+    pub fn find_node_before(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
         let idx = if let Some((idx, _)) = self
             .roots
             .iter()
             .enumerate()
-            .find(|(_, ref c)| offset <= c.borrow().start)
+            .find(|(_, ref c)| offset <= c.read().unwrap().start)
         {
             idx
         } else {
             self.roots.len()
         };
         if idx > 0 {
-            let child = Rc::clone(&self.roots[idx - 1]);
-            if offset > child.borrow().start {
-                if offset < child.borrow().end {
+            let child = Arc::clone(&self.roots[idx - 1]);
+            if offset > child.read().unwrap().start {
+                if offset < child.read().unwrap().end {
                     return Some(Node::find_node_before(child, offset));
                 }
                 if child
-                    .borrow()
+                    .read()
+                    .unwrap()
                     .last_child()
-                    .is_some_and(|last_child| last_child.borrow().end == child.borrow().end)
+                    .is_some_and(|last_child| {
+                        last_child.read().unwrap().end == child.read().unwrap().end
+                    })
                 {
                     return Some(Node::find_node_before(child, offset));
                 }
@@ -158,12 +165,12 @@ impl HTMLDocument {
         None
     }
 
-    pub fn find_node_at(&self, offset: usize) -> Option<Rc<RefCell<Node>>> {
+    pub fn find_node_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
         let idx = if let Some((idx, _)) = self
             .roots
             .iter()
             .enumerate()
-            .find(|(_, ref c)| offset <= c.borrow().start)
+            .find(|(_, ref c)| offset <= c.read().unwrap().start)
         {
             idx
         } else {
@@ -171,8 +178,8 @@ impl HTMLDocument {
         };
 
         if idx > 0 {
-            let child = Rc::clone(&self.roots[idx - 1]);
-            if offset > child.borrow().start && offset <= child.borrow().end {
+            let child = Arc::clone(&self.roots[idx - 1]);
+            if offset > child.read().unwrap().start && offset <= child.read().unwrap().end {
                 return Some(Node::find_node_at(child, offset));
             }
         }
@@ -194,124 +201,135 @@ impl HTMLParser {
     }
 
     pub fn parse(&self, text: &str, language_id: &str) -> HTMLDocument {
-        let manager = self.data_manager.read().unwrap();
-        let void_elements = manager.get_void_elements(language_id);
-        let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent);
-
-        let html_document = Rc::new(RefCell::new(Node::new(0, text.len(), vec![], Weak::new())));
-        let mut cur = Rc::clone(&html_document);
-        let mut end_tag_start = None;
-        let mut end_tag_name = None;
-        let mut pending_attribute = None;
-        let mut token = scanner.scan();
-        while token != TokenType::EOS {
-            match token {
-                TokenType::StartTagOpen => {
-                    let child = Rc::new(RefCell::new(Node::new(
-                        scanner.get_token_offset(),
-                        text.len(),
-                        vec![],
-                        Rc::downgrade(&cur),
-                    )));
-                    cur.borrow_mut().children.push(Rc::clone(&child));
-                    cur = child;
-                }
-                TokenType::StartTag => {
-                    cur.borrow_mut().tag = Some(scanner.get_token_text().to_string());
-                }
-                TokenType::StartTagClose => {
-                    if cur.borrow().parent.upgrade().is_some() {
-                        cur.borrow_mut().end = scanner.get_token_end();
-                        if scanner.get_token_length() > 0 {
-                            let tag = cur.borrow().tag.clone();
-                            cur.borrow_mut().start_tag_end = Some(scanner.get_token_end());
-                            if tag.is_some()
-                                && self
-                                    .data_manager
-                                    .read()
-                                    .unwrap()
-                                    .is_void_element(&tag.unwrap(), &void_elements)
-                            {
-                                cur.borrow_mut().closed = true;
-                                let parent = cur.borrow().parent.upgrade().unwrap();
-                                cur = parent;
-                            }
-                        } else {
-                            // pseudo close token from an incomplete start tag
-                            let parent = cur.borrow().parent.upgrade().unwrap();
-                            cur = parent;
-                        }
-                    }
-                }
-                TokenType::StartTagSelfClose => {
-                    if cur.borrow().parent.upgrade().is_some() {
-                        cur.borrow_mut().closed = true;
-                        cur.borrow_mut().end = scanner.get_token_end();
-                        cur.borrow_mut().start_tag_end = Some(scanner.get_token_end());
-                        let parent = cur.borrow().parent.upgrade().unwrap();
-                        cur = parent;
-                    }
-                }
-                TokenType::EndTagOpen => {
-                    end_tag_start = Some(scanner.get_token_offset());
-                    end_tag_name = None;
-                }
-                TokenType::EndTag => {
-                    end_tag_name = Some(scanner.get_token_text().to_string().to_lowercase());
-                }
-                TokenType::EndTagClose => {
-                    let mut node = Rc::clone(&cur);
-                    // see if we can find a matching tag
-                    while !node.borrow().is_same_tag(end_tag_name.as_deref())
-                        && node.borrow().parent.upgrade().is_some()
-                    {
-                        let parent = node.borrow().parent.upgrade().unwrap();
-                        node = parent;
-                    }
-                    if node.borrow().parent.upgrade().is_some() {
-                        while !Rc::ptr_eq(&cur, &node) {
-                            cur.borrow_mut().end = end_tag_start.unwrap();
-                            cur.borrow_mut().closed = false;
-                            let parent = cur.borrow().parent.upgrade().unwrap();
-                            cur = parent;
-                        }
-                        cur.borrow_mut().closed = true;
-                        cur.borrow_mut().end_tag_start = end_tag_start;
-                        cur.borrow_mut().end = scanner.get_token_end();
-                        let parent = cur.borrow().parent.upgrade().unwrap();
-                        cur = parent;
-                    }
-                }
-                TokenType::AttributeName => {
-                    let text = scanner.get_token_text();
-                    pending_attribute = Some(text.to_string());
-                    cur.borrow_mut().attributes.insert(text.to_string(), None); // Support valueless attributes such as 'checked'
-                }
-                TokenType::AttributeValue => {
-                    let text = scanner.get_token_text();
-                    if let Some(attr) = pending_attribute {
-                        cur.borrow_mut()
-                            .attributes
-                            .insert(attr, Some(text.to_string()));
-                        pending_attribute = None;
-                    }
-                }
-                _ => {}
-            }
-            token = scanner.scan();
-        }
-        while cur.borrow().parent.upgrade().is_some() {
-            cur.borrow_mut().end = text.len();
-            cur.borrow_mut().closed = false;
-            let parent = cur.borrow().parent.upgrade().unwrap();
-            cur = parent;
-        }
-        let mut roots = vec![];
-        for root in html_document.borrow().children.iter() {
-            roots.push(Rc::clone(root));
-        }
-        HTMLDocument { roots }
+        parse_html_document(text, language_id, Arc::clone(&self.data_manager))
     }
+}
+
+pub fn parse_html_document(
+    text: &str,
+    language_id: &str,
+    data_manager: Arc<RwLock<HTMLDataManager>>,
+) -> HTMLDocument {
+    let manager = data_manager.read().unwrap();
+    let void_elements = manager.get_void_elements(language_id);
+    let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent);
+
+    let html_document = Arc::new(RwLock::new(Node::new(0, text.len(), vec![], Weak::new())));
+    let mut cur = Arc::clone(&html_document);
+    let mut end_tag_start = None;
+    let mut end_tag_name = None;
+    let mut pending_attribute = None;
+    let mut token = scanner.scan();
+    while token != TokenType::EOS {
+        match token {
+            TokenType::StartTagOpen => {
+                let child = Arc::new(RwLock::new(Node::new(
+                    scanner.get_token_offset(),
+                    text.len(),
+                    vec![],
+                    Arc::downgrade(&cur),
+                )));
+                cur.write().unwrap().children.push(Arc::clone(&child));
+                cur = child;
+            }
+            TokenType::StartTag => {
+                cur.write().unwrap().tag = Some(scanner.get_token_text().to_string());
+            }
+            TokenType::StartTagClose => {
+                if cur.read().unwrap().parent.upgrade().is_some() {
+                    cur.write().unwrap().end = scanner.get_token_end();
+                    if scanner.get_token_length() > 0 {
+                        let tag = cur.read().unwrap().tag.clone();
+                        cur.write().unwrap().start_tag_end = Some(scanner.get_token_end());
+                        if tag.is_some()
+                            && data_manager
+                                .read()
+                                .unwrap()
+                                .is_void_element(&tag.unwrap(), &void_elements)
+                        {
+                            cur.write().unwrap().closed = true;
+                            let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                            cur = parent;
+                        }
+                    } else {
+                        // pseudo close token from an incomplete start tag
+                        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                        cur = parent;
+                    }
+                }
+            }
+            TokenType::StartTagSelfClose => {
+                if cur.read().unwrap().parent.upgrade().is_some() {
+                    cur.write().unwrap().closed = true;
+                    cur.write().unwrap().end = scanner.get_token_end();
+                    cur.write().unwrap().start_tag_end = Some(scanner.get_token_end());
+                    let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                    cur = parent;
+                }
+            }
+            TokenType::EndTagOpen => {
+                end_tag_start = Some(scanner.get_token_offset());
+                end_tag_name = None;
+            }
+            TokenType::EndTag => {
+                end_tag_name = Some(scanner.get_token_text().to_string().to_lowercase());
+            }
+            TokenType::EndTagClose => {
+                let mut node = Arc::clone(&cur);
+                // see if we can find a matching tag
+                while !node.read().unwrap().is_same_tag(end_tag_name.as_deref())
+                    && node.read().unwrap().parent.upgrade().is_some()
+                {
+                    let parent = node.read().unwrap().parent.upgrade().unwrap();
+                    node = parent;
+                }
+                if node.read().unwrap().parent.upgrade().is_some() {
+                    while !Arc::ptr_eq(&cur, &node) {
+                        cur.write().unwrap().end = end_tag_start.unwrap();
+                        cur.write().unwrap().closed = false;
+                        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                        cur = parent;
+                    }
+                    cur.write().unwrap().closed = true;
+                    cur.write().unwrap().end_tag_start = end_tag_start;
+                    cur.write().unwrap().end = scanner.get_token_end();
+                    let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                    cur = parent;
+                }
+            }
+            TokenType::AttributeName => {
+                let text = scanner.get_token_text();
+                pending_attribute = Some(text.to_string());
+                cur.write()
+                    .unwrap()
+                    .attributes
+                    .insert(text.to_string(), None); // Support valueless attributes such as 'checked'
+            }
+            TokenType::AttributeValue => {
+                let text = scanner.get_token_text();
+                if let Some(attr) = pending_attribute {
+                    cur.write()
+                        .unwrap()
+                        .attributes
+                        .insert(attr, Some(text.to_string()));
+                    pending_attribute = None;
+                }
+            }
+            _ => {}
+        }
+        token = scanner.scan();
+    }
+    while cur.read().unwrap().parent.upgrade().is_some() {
+        cur.write().unwrap().end = text.len();
+        cur.write().unwrap().closed = false;
+        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+        cur = parent;
+    }
+    let mut roots = vec![];
+    for root in html_document.read().unwrap().children.iter() {
+        roots.push(Arc::clone(root));
+    }
+    HTMLDocument { roots }
 }
 
 #[cfg(test)]
@@ -323,8 +341,8 @@ mod tests {
         HTMLParser::new(data_manager).parse(text, "html")
     }
 
-    fn to_json(node: Rc<RefCell<Node>>) -> NodeJSON {
-        let node = node.borrow();
+    fn to_json(node: Arc<RwLock<Node>>) -> NodeJSON {
+        let node = node.read().unwrap();
         NodeJSON {
             tag: node.tag.clone().unwrap_or_default(),
             start: node.start,
@@ -339,8 +357,8 @@ mod tests {
         }
     }
 
-    fn to_json_with_attributes(node: Rc<RefCell<Node>>) -> NodeJSONWithAttributes {
-        let node = node.borrow();
+    fn to_json_with_attributes(node: Arc<RwLock<Node>>) -> NodeJSONWithAttributes {
+        let node = node.read().unwrap();
         NodeJSONWithAttributes {
             tag: node.tag.clone().unwrap_or_default(),
             attributes: node.attributes.clone(),
@@ -367,7 +385,7 @@ mod tests {
         let node = document.find_node_before(offset);
         if let Some(node) = node {
             assert_eq!(
-                node.borrow().tag,
+                node.read().unwrap().tag,
                 Some(expected_tag.unwrap_or_default().to_string())
             );
         } else {
