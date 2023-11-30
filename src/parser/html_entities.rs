@@ -1145,7 +1145,6 @@ pub fn get_entities() -> HashMap<&'static str, &'static str> {
         ("natural;", "\u{266E}"),
         ("naturals;", "\u{2115}"),
         ("nbsp;", "\u{00A0}"),
-        ("nbsp", "\u{00A0}"),
         ("nbump;", "\u{224E}\u{0338}"),
         ("nbumpe;", "\u{224F}\u{0338}"),
         ("ncap;", "\u{2A43}"),
