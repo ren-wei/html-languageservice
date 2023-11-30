@@ -5,8 +5,9 @@ pub mod services;
 pub mod utils;
 
 pub use parser::html_parse::parse_html_document;
+use tokio::sync::RwLock;
 
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider};
 use lsp_textdocument::FullTextDocument;
@@ -42,14 +43,14 @@ impl LanguageService {
         }
     }
 
-    pub fn set_data_providers(
+    pub async fn set_data_providers(
         &mut self,
         built_in: bool,
         providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
     ) {
         self.data_manager
             .write()
-            .unwrap()
+            .await
             .set_data_providers(built_in, providers);
     }
 
@@ -57,11 +58,11 @@ impl LanguageService {
         Scanner::new(input, initial_offset, ScannerState::WithinContent)
     }
 
-    pub fn parse_html_document(&self, document: &FullTextDocument) -> HTMLDocument {
-        self.html_parse.parse_document(document)
+    pub async fn parse_html_document(&self, document: &FullTextDocument) -> HTMLDocument {
+        self.html_parse.parse_document(document).await
     }
 
-    pub fn do_complete(
+    pub async fn do_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -69,13 +70,15 @@ impl LanguageService {
         document_context: impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
     ) -> CompletionList {
-        self.html_completion.do_complete(
-            document,
-            position,
-            html_document,
-            document_context,
-            settings,
-        )
+        self.html_completion
+            .do_complete(
+                document,
+                position,
+                html_document,
+                document_context,
+                settings,
+            )
+            .await
     }
 
     pub fn set_completion_participants(
@@ -86,7 +89,7 @@ impl LanguageService {
             .set_completion_participants(registered_completion_participants);
     }
 
-    pub fn do_hover(
+    pub async fn do_hover(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -95,6 +98,7 @@ impl LanguageService {
     ) -> Option<Hover> {
         self.html_hover
             .do_hover(document, position, html_document, options)
+            .await
     }
 }
 

@@ -1,7 +1,8 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
+use tokio::sync::RwLock;
 
 use super::{
     data_provider::{HTMLDataProvider, IHTMLDataProvider},
@@ -52,20 +53,18 @@ impl HTMLDataManager {
         void_elements.contains(&e.to_string())
     }
 
-    pub fn get_void_elements(&self, language_id: &str) -> Vec<String> {
-        let data_providers = self
-            .data_providers
-            .iter()
-            .filter(|p| p.read().unwrap().is_applicable(language_id));
+    pub async fn get_void_elements(&self, language_id: &str) -> Vec<String> {
         let mut void_tags: Vec<String> = vec![];
-        for provider in data_providers {
-            provider
-                .read()
-                .unwrap()
-                .provide_tags()
-                .iter()
-                .filter(|tag| tag.void.is_some_and(|v| v))
-                .for_each(|tag| void_tags.push(tag.name.clone()))
+        for provider in &self.data_providers {
+            if provider.read().await.is_applicable(language_id) {
+                provider
+                    .read()
+                    .await
+                    .provide_tags()
+                    .iter()
+                    .filter(|tag| tag.void.is_some_and(|v| v))
+                    .for_each(|tag| void_tags.push(tag.name.clone()))
+            }
         }
         void_tags.sort();
         void_tags

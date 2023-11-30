@@ -1,14 +1,13 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 
+use async_recursion::async_recursion;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{
     Command, CompletionItem, CompletionItemKind, CompletionList, CompletionTextEdit, Documentation,
     InsertTextFormat, Position, Range, TextEdit,
 };
 use regex::Regex;
+use tokio::sync::RwLock;
 
 use crate::{
     language_facts::{
@@ -54,7 +53,7 @@ impl HTMLCompletion {
         self.completion_participants = registered_completion_participants;
     }
 
-    pub fn do_complete(
+    pub async fn do_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -62,27 +61,29 @@ impl HTMLCompletion {
         _document_context: impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
     ) -> CompletionList {
-        let data_manager = self.data_manager.read().unwrap();
+        let data_manager = self.data_manager.read().await;
         let mut result = CompletionList::default();
-        let data_providers: Vec<_> = data_manager
-            .get_data_providers()
-            .iter()
-            .filter(|p| {
-                p.read().unwrap().is_applicable(document.language_id())
-                    && (settings.is_none()
-                        || settings.is_some_and(|s| {
-                            let v = s.provider.get(p.read().unwrap().get_id());
-                            v.is_none() || *v.unwrap()
-                        }))
-            })
-            .collect();
+        let mut data_providers = vec![];
+        for provider in data_manager.get_data_providers() {
+            if provider.read().await.is_applicable(document.language_id()) {
+                if settings.is_none() {
+                    data_providers.push(provider);
+                } else {
+                    let s = settings.unwrap();
+                    let v = s.provider.get(provider.read().await.get_id());
+                    if v.is_none() || *v.unwrap() {
+                        data_providers.push(provider);
+                    }
+                }
+            }
+        }
 
-        let void_elements = data_manager.get_void_elements(document.language_id());
+        let void_elements = data_manager.get_void_elements(document.language_id()).await;
 
         let text = document.get_content(None);
         let offset = document.offset_at(*position).try_into().unwrap();
 
-        let node = html_document.find_node_before(offset);
+        let node = html_document.find_node_before(offset).await;
 
         if node.is_none() {
             return result;
@@ -107,7 +108,7 @@ impl HTMLCompletion {
             data_manager: Arc::clone(&self.data_manager),
         };
 
-        let node = node.read().unwrap();
+        let node = node.read().await;
 
         let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent);
 
@@ -126,26 +127,30 @@ impl HTMLCompletion {
                         if position.line == 0 {
                             content.suggest_doctype(offset, end_pos);
                         }
-                        content.collect_tag_suggestions(offset, end_pos);
+                        content.collect_tag_suggestions(offset, end_pos).await;
                         return result;
                     }
                 }
                 TokenType::StartTag => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content.collect_open_tag_suggestions(
-                            scanner.get_token_offset(),
-                            scanner.get_token_end(),
-                        );
+                        content
+                            .collect_open_tag_suggestions(
+                                scanner.get_token_offset(),
+                                scanner.get_token_end(),
+                            )
+                            .await;
                         return result;
                     }
                     content.current_tag = Some(scanner.get_token_text().to_string());
                 }
                 TokenType::AttributeName => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content.collect_attribute_name_suggestions(
-                            scanner.get_token_offset(),
-                            scanner.get_token_end(),
-                        );
+                        content
+                            .collect_attribute_name_suggestions(
+                                scanner.get_token_offset(),
+                                scanner.get_token_end(),
+                            )
+                            .await;
                         return result;
                     }
                     content.current_attribute_name = scanner.get_token_text().to_string();
@@ -158,16 +163,20 @@ impl HTMLCompletion {
                             offset,
                             TokenType::AttributeValue,
                         );
-                        content.collect_attribute_value_suggestions(offset, end_pos);
+                        content
+                            .collect_attribute_value_suggestions(offset, end_pos)
+                            .await;
                         return result;
                     }
                 }
                 TokenType::AttributeValue => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content.collect_attribute_value_suggestions(
-                            scanner.get_token_offset(),
-                            scanner.get_token_end(),
-                        );
+                        content
+                            .collect_attribute_value_suggestions(
+                                scanner.get_token_offset(),
+                                scanner.get_token_end(),
+                            )
+                            .await;
                         return result;
                     }
                 }
@@ -182,36 +191,46 @@ impl HTMLCompletion {
                                     offset,
                                     TokenType::StartTag,
                                 );
-                                content.collect_tag_suggestions(start_pos, end_tag_pos);
+                                content
+                                    .collect_tag_suggestions(start_pos, end_tag_pos)
+                                    .await;
                                 return result;
                             }
                             ScannerState::WithinTag => {
-                                content.collect_attribute_name_suggestions(
-                                    scanner.get_token_end(),
-                                    offset,
-                                );
+                                content
+                                    .collect_attribute_name_suggestions(
+                                        scanner.get_token_end(),
+                                        offset,
+                                    )
+                                    .await;
                                 return result;
                             }
                             ScannerState::AfterAttributeName => {
-                                content.collect_attribute_name_suggestions(
-                                    scanner.get_token_end(),
-                                    offset,
-                                );
+                                content
+                                    .collect_attribute_name_suggestions(
+                                        scanner.get_token_end(),
+                                        offset,
+                                    )
+                                    .await;
                                 return result;
                             }
                             ScannerState::BeforeAttributeValue => {
-                                content.collect_attribute_value_suggestions(
-                                    scanner.get_token_end(),
-                                    offset,
-                                );
+                                content
+                                    .collect_attribute_value_suggestions(
+                                        scanner.get_token_end(),
+                                        offset,
+                                    )
+                                    .await;
                                 return result;
                             }
                             ScannerState::AfterOpeningEndTag => {
-                                content.collect_close_tag_suggestions(
-                                    scanner.get_token_offset() - 1,
-                                    false,
-                                    offset,
-                                );
+                                content
+                                    .collect_close_tag_suggestions(
+                                        scanner.get_token_offset() - 1,
+                                        false,
+                                        offset,
+                                    )
+                                    .await;
                                 return result;
                             }
                             ScannerState::WithinContent => {
@@ -225,10 +244,12 @@ impl HTMLCompletion {
                 TokenType::StartTagClose => {
                     if offset <= scanner.get_token_end() {
                         if content.current_tag.is_some() {
-                            content.collect_auto_close_tag_suggestion(
-                                scanner.get_token_end(),
-                                &content.current_tag.clone().unwrap(),
-                            );
+                            content
+                                .collect_auto_close_tag_suggestion(
+                                    scanner.get_token_end(),
+                                    &content.current_tag.clone().unwrap(),
+                                )
+                                .await;
                             return result;
                         }
                     }
@@ -248,11 +269,9 @@ impl HTMLCompletion {
                             offset,
                             TokenType::EndTag,
                         );
-                        content.collect_close_tag_suggestions(
-                            after_open_bracket,
-                            false,
-                            end_offset,
-                        );
+                        content
+                            .collect_close_tag_suggestions(after_open_bracket, false, end_offset)
+                            .await;
                         return result;
                     }
                 }
@@ -262,11 +281,13 @@ impl HTMLCompletion {
                         while start > 0 {
                             let ch = text.bytes().nth(start).unwrap();
                             if ch == b'/' {
-                                content.collect_close_tag_suggestions(
-                                    start,
-                                    false,
-                                    scanner.get_token_end(),
-                                );
+                                content
+                                    .collect_close_tag_suggestions(
+                                        start,
+                                        false,
+                                        scanner.get_token_end(),
+                                    )
+                                    .await;
                                 return result;
                             } else if !is_white_space(std::str::from_utf8(&[ch]).unwrap()) {
                                 break;
@@ -334,15 +355,20 @@ impl CompletionContext<'_> {
         offset
     }
 
-    fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize) {
-        self.collect_open_tag_suggestions(tag_start, tag_end);
-        self.collect_close_tag_suggestions(tag_start, true, tag_end);
+    async fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize) {
+        self.collect_open_tag_suggestions(tag_start, tag_end).await;
+        self.collect_close_tag_suggestions(tag_start, true, tag_end)
+            .await;
     }
 
-    fn collect_open_tag_suggestions(&mut self, after_open_bracket: usize, tag_name_end: usize) {
+    async fn collect_open_tag_suggestions(
+        &mut self,
+        after_open_bracket: usize,
+        tag_name_end: usize,
+    ) {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         for provider in &self.data_providers {
-            for tag in provider.read().unwrap().provide_tags() {
+            for tag in provider.read().await.provide_tags() {
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -374,7 +400,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
+    async fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
         let mut replace_end = self.offset;
         let text = self.document.get_content(None);
         while replace_end < name_end && text.as_bytes().get(replace_end).is_some_and(|c| *c != b'<')
@@ -406,13 +432,13 @@ impl CompletionContext<'_> {
             }
         }
 
-        let mut existing_attributes = self.get_existing_attributes();
+        let mut existing_attributes = self.get_existing_attributes().await;
         existing_attributes.insert(current_attribute.to_string(), false);
 
         for provider in &self.data_providers {
             for attr in provider
                 .read()
-                .unwrap()
+                .await
                 .provide_attributes(&self.current_tag.as_ref().unwrap())
             {
                 if existing_attributes.get(&attr.name).is_some_and(|v| *v) {
@@ -466,10 +492,11 @@ impl CompletionContext<'_> {
                 });
             }
         }
-        self.collect_data_attributes_suggestions(range, &existing_attributes);
+        self.collect_data_attributes_suggestions(range, &existing_attributes)
+            .await;
     }
 
-    fn collect_data_attributes_suggestions(
+    async fn collect_data_attributes_suggestions(
         &mut self,
         range: Range,
         existing_attributes: &HashMap<String, bool>,
@@ -478,13 +505,14 @@ impl CompletionContext<'_> {
         let mut data_attributes: HashMap<String, String> = HashMap::new();
         data_attributes.insert(data_attr.to_string(), format!(r#"{data_attr}$1="$2""#));
 
-        fn add_node_data_attributes(
+        #[async_recursion]
+        async fn add_node_data_attributes(
             data_attributes: &mut HashMap<String, String>,
             node: Arc<RwLock<Node>>,
             existing_attributes: &HashMap<String, bool>,
             data_attr: &str,
         ) {
-            let node = node.read().unwrap();
+            let node = node.read().await;
             for attr in node.attribute_names() {
                 if attr.starts_with(data_attr)
                     && !data_attributes.contains_key(&attr[..])
@@ -499,7 +527,8 @@ impl CompletionContext<'_> {
                     Arc::clone(child),
                     existing_attributes,
                     data_attr,
-                );
+                )
+                .await;
             }
         }
 
@@ -509,7 +538,8 @@ impl CompletionContext<'_> {
                 Arc::clone(root),
                 existing_attributes,
                 data_attr,
-            );
+            )
+            .await;
         }
 
         for (attr, value) in data_attributes {
@@ -526,7 +556,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_attribute_value_suggestions(&mut self, value_start: usize, value_end: usize) {
+    async fn collect_attribute_value_suggestions(&mut self, value_start: usize, value_end: usize) {
         let range: Range;
         let add_quotes: bool;
         let value_prefix;
@@ -581,7 +611,7 @@ impl CompletionContext<'_> {
         }
 
         for provider in &self.data_providers {
-            for value in provider.read().unwrap().provide_values(
+            for value in provider.read().await.provide_values(
                 &self.current_tag.clone().unwrap_or_default(),
                 &self.current_attribute_name,
             ) {
@@ -623,7 +653,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_close_tag_suggestions(
+    async fn collect_close_tag_suggestions(
         &mut self,
         after_open_bracket: usize,
         in_open_tag: bool,
@@ -642,11 +672,11 @@ impl CompletionContext<'_> {
         };
         let mut cur = Some(Arc::clone(&self.node));
         if in_open_tag {
-            cur = cur.unwrap().read().unwrap().parent.upgrade();
+            cur = cur.unwrap().read().await.parent.upgrade();
         }
         while cur.is_some() {
             let c = cur.unwrap();
-            let cur_node = c.read().unwrap();
+            let cur_node = c.read().await;
             let tag = &cur_node.tag;
             if tag.is_some()
                 && (!cur_node.closed
@@ -691,7 +721,7 @@ impl CompletionContext<'_> {
         }
 
         for provider in &self.data_providers {
-            for tag in provider.read().unwrap().provide_tags() {
+            for tag in provider.read().await.provide_tags() {
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -718,14 +748,15 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_auto_close_tag_suggestion(&mut self, tag_close_end: usize, tag: &str) {
+    async fn collect_auto_close_tag_suggestion(&mut self, tag_close_end: usize, tag: &str) {
         if self.settings.is_some() && self.settings.unwrap().hide_auto_complete_proposals {
             return;
         }
         if !self
             .data_manager
             .read()
-            .is_ok_and(|m| m.is_void_element(tag, &self.void_elements))
+            .await
+            .is_void_element(tag, &self.void_elements)
         {
             let pos = self.document.position_at(tag_close_end as u32);
             let text_edit = Some(CompletionTextEdit::Edit(TextEdit {
@@ -811,9 +842,9 @@ impl CompletionContext<'_> {
         });
     }
 
-    fn get_existing_attributes(&self) -> HashMap<String, bool> {
+    async fn get_existing_attributes(&self) -> HashMap<String, bool> {
         let mut map: HashMap<String, bool> = HashMap::new();
-        for name in self.node.read().unwrap().attribute_names() {
+        for name in self.node.read().await.attribute_names() {
             map.insert((*name).to_string(), true);
         }
         map
@@ -925,7 +956,7 @@ mod tests {
 
     use super::*;
 
-    fn test_completion_for(
+    async fn test_completion_for(
         value: &str,
         expected: Expected,
         settings: Option<CompletionConfiguration>,
@@ -943,14 +974,16 @@ mod tests {
 
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
-        let html_document = ls.parse_html_document(&document);
-        let list = ls.do_complete(
-            &document,
-            &position,
-            &html_document,
-            DefaultDocumentContext,
-            settings.as_ref(),
-        );
+        let html_document = ls.parse_html_document(&document).await;
+        let list = ls
+            .do_complete(
+                &document,
+                &position,
+                &html_document,
+                DefaultDocumentContext,
+                settings.as_ref(),
+            )
+            .await;
 
         // no duplicate labels
         let mut labels: Vec<String> = list.items.iter().map(|i| i.label.clone()).collect();
@@ -1062,8 +1095,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn complete() {
+    #[tokio::test]
+    async fn complete() {
         test_completion_for(
             "<|",
             Expected {
@@ -1093,7 +1126,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             "\n<|",
@@ -1107,7 +1141,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             "< |",
@@ -1133,7 +1168,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             "<h|",
@@ -1159,7 +1195,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<input|",
             Expected {
@@ -1172,7 +1209,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<inp|ut",
             Expected {
@@ -1185,7 +1223,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<|inp",
             Expected {
@@ -1198,7 +1237,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<input |",
             Expected {
@@ -1223,7 +1263,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<input t|",
             Expected {
@@ -1243,7 +1284,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<input t|ype",
             Expected {
@@ -1263,7 +1305,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input t|ype="text""#,
             Expected {
@@ -1283,7 +1326,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="text" |"#,
             Expected {
@@ -1308,7 +1352,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input | type="text""#,
             Expected {
@@ -1333,7 +1378,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="text" type="number" |"#,
             Expected {
@@ -1358,7 +1404,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="text" s|"#,
             Expected {
@@ -1383,7 +1430,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="text" s|"#,
             Expected {
@@ -1408,7 +1456,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             r#"<input di| type="text""#,
@@ -1429,7 +1478,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             r#"<input disabled | type="text""#,
@@ -1450,7 +1500,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             r#"<input type=|"#,
@@ -1471,7 +1522,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="c|"#,
             Expected {
@@ -1491,7 +1543,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type="|"#,
             Expected {
@@ -1511,7 +1564,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input type= |"#,
             Expected {
@@ -1531,7 +1585,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input src="c" type="color|" "#,
             Expected {
@@ -1544,7 +1599,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<iframe sandbox="allow-forms |"#,
             Expected {
@@ -1557,7 +1613,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<iframe sandbox="allow-forms allow-modals|"#,
             Expected {
@@ -1570,7 +1627,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<iframe sandbox="allow-forms all|""#,
             Expected {
@@ -1583,7 +1641,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<iframe sandbox="allow-forms a|llow-modals ""#,
             Expected {
@@ -1596,7 +1655,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<input src="c" type=color| "#,
             Expected {
@@ -1609,7 +1669,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div dir=|></div>"#,
             Expected {
@@ -1629,7 +1690,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<ul><|>"#,
             Expected {
@@ -1649,7 +1711,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<ul><li><|"#,
             Expected {
@@ -1669,7 +1732,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<goo></|>"#,
             Expected {
@@ -1682,7 +1746,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<foo></f|"#,
             Expected {
@@ -1695,7 +1760,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<foo></f|o"#,
             Expected {
@@ -1708,7 +1774,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<foo></|fo"#,
             Expected {
@@ -1721,7 +1788,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<foo></ |>"#,
             Expected {
@@ -1734,7 +1802,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<span></ s|"#,
             Expected {
@@ -1747,7 +1816,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<li><br></ |>"#,
             Expected {
@@ -1760,7 +1830,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<li/|>",
             Expected {
@@ -1769,7 +1840,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "  <div/|   ",
             Expected {
@@ -1778,7 +1850,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<foo><br/></ f|>"#,
             Expected {
@@ -1791,7 +1864,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<li><div/></|"#,
             Expected {
@@ -1804,7 +1878,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<li><br/|>",
             Expected {
@@ -1813,7 +1888,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<li><br>a/|",
             Expected {
@@ -1822,7 +1898,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
 
         test_completion_for(
             r#"<foo><bar></bar></|   "#,
@@ -1836,7 +1913,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div>\n  <form>\n    <div>\n      <label></label>\n      <|\n    </div>\n  </form></div>",
             Expected {
@@ -1860,7 +1938,7 @@ mod tests {
             },
             None,
             None,
-        );
+        ).await;
         test_completion_for(
             r#"<body><div><div></div></div></|  >"#,
             Expected {
@@ -1873,7 +1951,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<body>\n  <div>\n    </|",
             Expected {
@@ -1886,7 +1965,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div><a hre|</div>",
             Expected {
@@ -1899,7 +1979,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<a><b>foo</b><|f>",
             Expected {
@@ -1919,7 +2000,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<a><b>foo</b><| bar.",
             Expected {
@@ -1939,7 +2021,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div><h1><br><span></span><img></| </h1></div>",
             Expected {
@@ -1952,7 +2035,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div>|",
             Expected {
@@ -1965,7 +2049,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div>|"#,
             Expected {
@@ -1982,7 +2067,8 @@ mod tests {
                 provider: HashMap::new(),
             }),
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div d|"#,
             Expected {
@@ -1995,7 +2081,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div no-data-test="no-data" d|"#,
             Expected {
@@ -2008,7 +2095,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div data-custom="test"><div d|"#,
             Expected {
@@ -2028,7 +2116,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div d|"#,
             Expected {
@@ -2059,7 +2148,7 @@ mod tests {
             },
             None,
             None,
-        );
+        ).await;
         test_completion_for(
             r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" inc|></div></body>"#,
             Expected {
@@ -2074,11 +2163,11 @@ mod tests {
             },
             None,
             None,
-        );
+        ).await;
     }
 
-    #[test]
-    fn references() {
+    #[tokio::test]
+    async fn references() {
         let doc =
 			"The div element has no special meaning at all. It represents its children. It can be used with the class, lang, and title attributes to mark up semantics common to a group of consecutive elements.".to_string() +
 			"\n\n" +
@@ -2100,11 +2189,12 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn case_sensitivity() {
+    #[tokio::test]
+    async fn case_sensitivity() {
         test_completion_for(
             "<LI></|",
             Expected {
@@ -2124,7 +2214,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<lI></|",
             Expected {
@@ -2137,7 +2228,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<iNpUt |",
             Expected {
@@ -2150,7 +2242,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<INPUT TYPE=|",
             Expected {
@@ -2163,7 +2256,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<dIv>|",
             Expected {
@@ -2176,11 +2270,12 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn handlebar_completion() {
+    #[tokio::test]
+    async fn handlebar_completion() {
         test_completion_for(
             r#"<script id="entry-template" type="text/x-handlebars-template"> <| </script>"#,
             Expected {
@@ -2195,11 +2290,11 @@ mod tests {
             },
             None,
             None,
-        );
+        ).await;
     }
 
-    #[test]
-    fn support_script_type() {
+    #[tokio::test]
+    async fn support_script_type() {
         test_completion_for(
             r#"<script id="html-template" type="text/html"> <| </script>"#,
             Expected {
@@ -2214,11 +2309,12 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn complete_aria() {
+    #[tokio::test]
+    async fn complete_aria() {
         let expected_aria_attributes = vec![
             ItemDescription {
                 label: "aria-activedescendant",
@@ -2414,7 +2510,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<span  |> </span >",
             Expected {
@@ -2423,7 +2520,8 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<input  |> </input >",
             Expected {
@@ -2432,11 +2530,12 @@ mod tests {
             },
             None,
             None,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn settings() {
+    #[tokio::test]
+    async fn settings() {
         test_completion_for(
             "<|",
             Expected {
@@ -2453,7 +2552,8 @@ mod tests {
                 provider: HashMap::from([("html5".to_string(), false)]),
             }),
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div clas|",
             Expected {
@@ -2470,7 +2570,8 @@ mod tests {
                 provider: HashMap::new(),
             }),
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div clas|",
             Expected {
@@ -2487,7 +2588,8 @@ mod tests {
                 provider: HashMap::new(),
             }),
             None,
-        );
+        )
+        .await;
         test_completion_for(
             "<div clas|",
             Expected {
@@ -2504,7 +2606,8 @@ mod tests {
                 provider: HashMap::new(),
             }),
             None,
-        );
+        )
+        .await;
     }
 
     #[derive(Default)]

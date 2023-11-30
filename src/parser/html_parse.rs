@@ -1,9 +1,10 @@
+use async_recursion::async_recursion;
+use lsp_textdocument::FullTextDocument;
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock, Weak},
+    sync::{Arc, Weak},
 };
-
-use lsp_textdocument::FullTextDocument;
+use tokio::sync::RwLock;
 
 use crate::{
     language_facts::data_manager::HTMLDataManager,
@@ -68,62 +69,60 @@ impl Node {
         Some(Arc::clone(self.children.last()?))
     }
 
-    pub fn find_node_before(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
-        let idx = if let Some((idx, _)) = node
-            .read()
-            .unwrap()
-            .children
-            .iter()
-            .enumerate()
-            .find(|(_, ref c)| offset <= c.read().unwrap().start)
-        {
-            idx
-        } else {
-            node.read().unwrap().children.len()
-        };
-        if idx > 0 {
-            let child = Arc::clone(&node.read().unwrap().children[idx - 1]);
-            if offset > child.read().unwrap().start {
-                if offset < child.read().unwrap().end {
-                    return Node::find_node_before(child, offset);
-                }
-                if child
-                    .read()
-                    .unwrap()
-                    .last_child()
-                    .is_some_and(|last_child| {
-                        last_child.read().unwrap().end == child.read().unwrap().end
-                    })
-                {
-                    return Node::find_node_before(child, offset);
-                }
-                return child;
+    #[async_recursion]
+    pub async fn find_node_before(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
+        let raw_node = node;
+        let node = raw_node.read().await;
+        let mut idx = node.children.len();
+        for (i, child) in node.children.iter().enumerate() {
+            if offset <= child.read().await.start {
+                idx = i;
+                break;
             }
         }
-        node
+        if idx > 0 {
+            let raw_child = Arc::clone(&node.children[idx - 1]);
+            let child = raw_child.read().await;
+            if offset > child.start {
+                if offset < child.end {
+                    drop(child);
+                    return Node::find_node_before(raw_child, offset).await;
+                }
+                if let Some(last_child) = child.last_child() {
+                    if last_child.read().await.end == child.end {
+                        drop(child);
+                        return Node::find_node_before(raw_child, offset).await;
+                    }
+                }
+                drop(child);
+                return raw_child;
+            }
+        }
+        drop(node);
+        raw_node
     }
 
-    pub fn find_node_at(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
-        let idx = if let Some((idx, _)) = node
-            .read()
-            .unwrap()
-            .children
-            .iter()
-            .enumerate()
-            .find(|(_, ref c)| offset <= c.read().unwrap().start)
-        {
-            idx
-        } else {
-            node.read().unwrap().children.len()
-        };
-
-        if idx > 0 {
-            let child = Arc::clone(&node.read().unwrap().children[idx - 1]);
-            if offset > child.read().unwrap().start && offset <= child.read().unwrap().end {
-                return Node::find_node_at(child, offset);
+    #[async_recursion]
+    pub async fn find_node_at(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
+        let raw_node = node;
+        let node = raw_node.read().await;
+        let mut idx = node.children.len();
+        for (i, child) in node.children.iter().enumerate() {
+            if offset <= child.read().await.start {
+                idx = i;
             }
         }
-        node
+
+        if idx > 0 {
+            let raw_child = Arc::clone(&node.children[idx - 1]);
+            let child = raw_child.read().await;
+            if offset > child.start && offset <= child.end {
+                drop(child);
+                return Node::find_node_at(raw_child, offset).await;
+            }
+        }
+        drop(node);
+        raw_node
     }
 }
 
@@ -132,55 +131,50 @@ pub struct HTMLDocument {
 }
 
 impl HTMLDocument {
-    pub fn find_node_before(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
-        let idx = if let Some((idx, _)) = self
-            .roots
-            .iter()
-            .enumerate()
-            .find(|(_, ref c)| offset <= c.read().unwrap().start)
-        {
-            idx
-        } else {
-            self.roots.len()
-        };
+    #[async_recursion]
+    pub async fn find_node_before(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+        let mut idx = self.roots.len();
+        for (i, child) in self.roots.iter().enumerate() {
+            if offset <= child.read().await.start {
+                idx = i;
+            }
+        }
         if idx > 0 {
-            let child = Arc::clone(&self.roots[idx - 1]);
-            if offset > child.read().unwrap().start {
-                if offset < child.read().unwrap().end {
-                    return Some(Node::find_node_before(child, offset));
+            let raw_child = Arc::clone(&self.roots[idx - 1]);
+            let child = raw_child.read().await;
+            if offset > child.start {
+                if offset < child.end {
+                    drop(child);
+                    return Some(Node::find_node_before(raw_child, offset).await);
                 }
-                if child
-                    .read()
-                    .unwrap()
-                    .last_child()
-                    .is_some_and(|last_child| {
-                        last_child.read().unwrap().end == child.read().unwrap().end
-                    })
-                {
-                    return Some(Node::find_node_before(child, offset));
+                if let Some(last_child) = child.last_child() {
+                    if last_child.read().await.end == child.end {
+                        drop(child);
+                        return Some(Node::find_node_before(raw_child, offset).await);
+                    }
                 }
-                return Some(child);
+                drop(child);
+                return Some(raw_child);
             }
         }
         None
     }
 
-    pub fn find_node_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
-        let idx = if let Some((idx, _)) = self
-            .roots
-            .iter()
-            .enumerate()
-            .find(|(_, ref c)| offset <= c.read().unwrap().start)
-        {
-            idx
-        } else {
-            self.roots.len()
-        };
+    #[async_recursion]
+    pub async fn find_node_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+        let mut idx = self.roots.len();
+        for (i, child) in self.roots.iter().enumerate() {
+            if offset <= child.read().await.start {
+                idx = i;
+            }
+        }
 
         if idx > 0 {
-            let child = Arc::clone(&self.roots[idx - 1]);
-            if offset > child.read().unwrap().start && offset <= child.read().unwrap().end {
-                return Some(Node::find_node_at(child, offset));
+            let raw_child = Arc::clone(&self.roots[idx - 1]);
+            let child = raw_child.read().await;
+            if offset > child.start && offset <= child.end {
+                drop(child);
+                return Some(Node::find_node_at(raw_child, offset).await);
             }
         }
         None
@@ -196,22 +190,23 @@ impl HTMLParser {
         HTMLParser { data_manager }
     }
 
-    pub fn parse_document(&self, document: &FullTextDocument) -> HTMLDocument {
+    pub async fn parse_document(&self, document: &FullTextDocument) -> HTMLDocument {
         self.parse(document.get_content(None), &document.language_id())
+            .await
     }
 
-    pub fn parse(&self, text: &str, language_id: &str) -> HTMLDocument {
-        parse_html_document(text, language_id, Arc::clone(&self.data_manager))
+    pub async fn parse(&self, text: &str, language_id: &str) -> HTMLDocument {
+        parse_html_document(text, language_id, Arc::clone(&self.data_manager)).await
     }
 }
 
-pub fn parse_html_document(
+pub async fn parse_html_document(
     text: &str,
     language_id: &str,
     data_manager: Arc<RwLock<HTMLDataManager>>,
 ) -> HTMLDocument {
-    let manager = data_manager.read().unwrap();
-    let void_elements = manager.get_void_elements(language_id);
+    let manager = data_manager.read().await;
+    let void_elements = manager.get_void_elements(language_id).await;
     let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent);
 
     let html_document = Arc::new(RwLock::new(Node::new(0, text.len(), vec![], Weak::new())));
@@ -229,41 +224,41 @@ pub fn parse_html_document(
                     vec![],
                     Arc::downgrade(&cur),
                 )));
-                cur.write().unwrap().children.push(Arc::clone(&child));
+                cur.write().await.children.push(Arc::clone(&child));
                 cur = child;
             }
             TokenType::StartTag => {
-                cur.write().unwrap().tag = Some(scanner.get_token_text().to_string());
+                cur.write().await.tag = Some(scanner.get_token_text().to_string());
             }
             TokenType::StartTagClose => {
-                if cur.read().unwrap().parent.upgrade().is_some() {
-                    cur.write().unwrap().end = scanner.get_token_end();
+                if cur.read().await.parent.upgrade().is_some() {
+                    cur.write().await.end = scanner.get_token_end();
                     if scanner.get_token_length() > 0 {
-                        let tag = cur.read().unwrap().tag.clone();
-                        cur.write().unwrap().start_tag_end = Some(scanner.get_token_end());
+                        let tag = cur.read().await.tag.clone();
+                        cur.write().await.start_tag_end = Some(scanner.get_token_end());
                         if tag.is_some()
                             && data_manager
                                 .read()
-                                .unwrap()
+                                .await
                                 .is_void_element(&tag.unwrap(), &void_elements)
                         {
-                            cur.write().unwrap().closed = true;
-                            let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                            cur.write().await.closed = true;
+                            let parent = cur.read().await.parent.upgrade().unwrap();
                             cur = parent;
                         }
                     } else {
                         // pseudo close token from an incomplete start tag
-                        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                        let parent = cur.read().await.parent.upgrade().unwrap();
                         cur = parent;
                     }
                 }
             }
             TokenType::StartTagSelfClose => {
-                if cur.read().unwrap().parent.upgrade().is_some() {
-                    cur.write().unwrap().closed = true;
-                    cur.write().unwrap().end = scanner.get_token_end();
-                    cur.write().unwrap().start_tag_end = Some(scanner.get_token_end());
-                    let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                if cur.read().await.parent.upgrade().is_some() {
+                    cur.write().await.closed = true;
+                    cur.write().await.end = scanner.get_token_end();
+                    cur.write().await.start_tag_end = Some(scanner.get_token_end());
+                    let parent = cur.read().await.parent.upgrade().unwrap();
                     cur = parent;
                 }
             }
@@ -277,39 +272,36 @@ pub fn parse_html_document(
             TokenType::EndTagClose => {
                 let mut node = Arc::clone(&cur);
                 // see if we can find a matching tag
-                while !node.read().unwrap().is_same_tag(end_tag_name.as_deref())
-                    && node.read().unwrap().parent.upgrade().is_some()
+                while !node.read().await.is_same_tag(end_tag_name.as_deref())
+                    && node.read().await.parent.upgrade().is_some()
                 {
-                    let parent = node.read().unwrap().parent.upgrade().unwrap();
+                    let parent = node.read().await.parent.upgrade().unwrap();
                     node = parent;
                 }
-                if node.read().unwrap().parent.upgrade().is_some() {
+                if node.read().await.parent.upgrade().is_some() {
                     while !Arc::ptr_eq(&cur, &node) {
-                        cur.write().unwrap().end = end_tag_start.unwrap();
-                        cur.write().unwrap().closed = false;
-                        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                        cur.write().await.end = end_tag_start.unwrap();
+                        cur.write().await.closed = false;
+                        let parent = cur.read().await.parent.upgrade().unwrap();
                         cur = parent;
                     }
-                    cur.write().unwrap().closed = true;
-                    cur.write().unwrap().end_tag_start = end_tag_start;
-                    cur.write().unwrap().end = scanner.get_token_end();
-                    let parent = cur.read().unwrap().parent.upgrade().unwrap();
+                    cur.write().await.closed = true;
+                    cur.write().await.end_tag_start = end_tag_start;
+                    cur.write().await.end = scanner.get_token_end();
+                    let parent = cur.read().await.parent.upgrade().unwrap();
                     cur = parent;
                 }
             }
             TokenType::AttributeName => {
                 let text = scanner.get_token_text();
                 pending_attribute = Some(text.to_string());
-                cur.write()
-                    .unwrap()
-                    .attributes
-                    .insert(text.to_string(), None); // Support valueless attributes such as 'checked'
+                cur.write().await.attributes.insert(text.to_string(), None); // Support valueless attributes such as 'checked'
             }
             TokenType::AttributeValue => {
                 let text = scanner.get_token_text();
                 if let Some(attr) = pending_attribute {
                     cur.write()
-                        .unwrap()
+                        .await
                         .attributes
                         .insert(attr, Some(text.to_string()));
                     pending_attribute = None;
@@ -319,14 +311,14 @@ pub fn parse_html_document(
         }
         token = scanner.scan();
     }
-    while cur.read().unwrap().parent.upgrade().is_some() {
-        cur.write().unwrap().end = text.len();
-        cur.write().unwrap().closed = false;
-        let parent = cur.read().unwrap().parent.upgrade().unwrap();
+    while cur.read().await.parent.upgrade().is_some() {
+        cur.write().await.end = text.len();
+        cur.write().await.closed = false;
+        let parent = cur.read().await.parent.upgrade().unwrap();
         cur = parent;
     }
     let mut roots = vec![];
-    for root in html_document.read().unwrap().children.iter() {
+    for root in html_document.read().await.children.iter() {
         roots.push(Arc::clone(root));
     }
     HTMLDocument { roots }
@@ -336,56 +328,58 @@ pub fn parse_html_document(
 mod tests {
     use super::*;
 
-    fn parse(text: &str) -> HTMLDocument {
+    async fn parse(text: &str) -> HTMLDocument {
         let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(true, None)));
-        HTMLParser::new(data_manager).parse(text, "html")
+        HTMLParser::new(data_manager).parse(text, "html").await
     }
 
-    fn to_json(node: Arc<RwLock<Node>>) -> NodeJSON {
-        let node = node.read().unwrap();
+    #[async_recursion]
+    async fn to_json(node: Arc<RwLock<Node>>) -> NodeJSON {
+        let raw_node = node;
+        let node = raw_node.read().await;
+        let mut children = vec![];
+        for child in &node.children {
+            children.push(to_json(child.to_owned()).await);
+        }
         NodeJSON {
             tag: node.tag.clone().unwrap_or_default(),
             start: node.start,
             end: node.end,
             end_tag_start: node.end_tag_start,
             closed: node.closed,
-            children: node
-                .children
-                .iter()
-                .map(|node| to_json(node.to_owned()))
-                .collect(),
+            children,
         }
     }
 
-    fn to_json_with_attributes(node: Arc<RwLock<Node>>) -> NodeJSONWithAttributes {
-        let node = node.read().unwrap();
+    #[async_recursion]
+    async fn to_json_with_attributes(node: Arc<RwLock<Node>>) -> NodeJSONWithAttributes {
+        let node = node.read().await;
+        let mut children = vec![];
+        for child in &node.children {
+            children.push(to_json_with_attributes(child.to_owned()).await)
+        }
         NodeJSONWithAttributes {
             tag: node.tag.clone().unwrap_or_default(),
             attributes: node.attributes.clone(),
-            children: node
-                .children
-                .iter()
-                .map(|node| to_json_with_attributes(node.to_owned()))
-                .collect(),
+            children,
         }
     }
 
-    fn assert_document(input: &str, expected: Vec<NodeJSON>) {
-        let document = parse(input);
-        let nodes: Vec<NodeJSON> = document
-            .roots
-            .iter()
-            .map(|root| to_json(root.to_owned()))
-            .collect();
+    async fn assert_document(input: &str, expected: Vec<NodeJSON>) {
+        let document = parse(input).await;
+        let mut nodes = vec![];
+        for root in document.roots {
+            nodes.push(to_json(root.to_owned()).await)
+        }
         assert_eq!(nodes, expected)
     }
 
-    fn assert_node_before(input: &str, offset: usize, expected_tag: Option<&str>) {
-        let document = parse(input);
-        let node = document.find_node_before(offset);
+    async fn assert_node_before(input: &str, offset: usize, expected_tag: Option<&str>) {
+        let document = parse(input).await;
+        let node = document.find_node_before(offset).await;
         if let Some(node) = node {
             assert_eq!(
-                node.read().unwrap().tag,
+                node.read().await.tag,
                 Some(expected_tag.unwrap_or_default().to_string())
             );
         } else {
@@ -393,18 +387,17 @@ mod tests {
         }
     }
 
-    fn assert_attributes(input: &str, expected: Vec<NodeJSONWithAttributes>) {
-        let document = parse(input);
-        let nodes: Vec<NodeJSONWithAttributes> = document
-            .roots
-            .iter()
-            .map(|root| to_json_with_attributes(root.to_owned()))
-            .collect();
+    async fn assert_attributes(input: &str, expected: Vec<NodeJSONWithAttributes>) {
+        let document = parse(input).await;
+        let mut nodes = vec![];
+        for root in document.roots {
+            nodes.push(to_json_with_attributes(root.to_owned()).await);
+        }
         assert_eq!(nodes, expected);
     }
 
-    #[test]
-    fn simple() {
+    #[tokio::test]
+    async fn simple() {
         assert_document(
             "<html></html>",
             vec![NodeJSON {
@@ -415,7 +408,8 @@ mod tests {
                 closed: true,
                 children: vec![],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<html><body></body></html>",
             vec![NodeJSON {
@@ -433,7 +427,8 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<html><head></head><body></body></html>",
             vec![NodeJSON {
@@ -462,10 +457,11 @@ mod tests {
                 ],
             }],
         )
+        .await;
     }
 
-    #[test]
-    fn self_close() {
+    #[tokio::test]
+    async fn self_close() {
         assert_document(
             "<br/>",
             vec![NodeJSON {
@@ -476,7 +472,8 @@ mod tests {
                 closed: true,
                 children: vec![],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<div><br/><span></span></div>",
             vec![NodeJSON {
@@ -504,11 +501,12 @@ mod tests {
                     },
                 ],
             }],
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn empty_tag() {
+    #[tokio::test]
+    async fn empty_tag() {
         assert_document(
             "<meta>",
             vec![NodeJSON {
@@ -519,7 +517,8 @@ mod tests {
                 closed: true,
                 children: vec![],
             }],
-        );
+        )
+        .await;
         assert_document(
             r#"<div><input type="button"><span><br><br></span></div>"#,
             vec![NodeJSON {
@@ -565,11 +564,12 @@ mod tests {
                 ],
             }],
         )
+        .await;
     }
 
-    #[test]
-    fn missing_tags() {
-        assert_document("</meta>", vec![]);
+    #[tokio::test]
+    async fn missing_tags() {
+        assert_document("</meta>", vec![]).await;
         assert_document(
             "<div></div></div>",
             vec![NodeJSON {
@@ -580,7 +580,8 @@ mod tests {
                 closed: true,
                 children: vec![],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<div><div></div>",
             vec![NodeJSON {
@@ -598,7 +599,8 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<title><div></title>",
             vec![NodeJSON {
@@ -616,7 +618,8 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<h1><div><span></h1>",
             vec![NodeJSON {
@@ -641,11 +644,12 @@ mod tests {
                     }],
                 }],
             }],
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn missing_brackets() {
+    #[tokio::test]
+    async fn missing_brackets() {
         assert_document(
             "<div><div</div>",
             vec![NodeJSON {
@@ -663,7 +667,8 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<div><div\n</div>",
             vec![NodeJSON {
@@ -681,7 +686,8 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
         assert_document(
             "<div><div></div</div>",
             vec![NodeJSON {
@@ -699,42 +705,43 @@ mod tests {
                     children: vec![],
                 }],
             }],
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn find_node_before() {
+    #[tokio::test]
+    async fn find_node_before() {
         let input = r#"<div><input type="button"><span><br><hr></span></div>"#;
-        assert_node_before(input, 0, None);
-        assert_node_before(input, 1, Some("div"));
-        assert_node_before(input, 5, Some("div"));
-        assert_node_before(input, 6, Some("input"));
-        assert_node_before(input, 25, Some("input"));
-        assert_node_before(input, 26, Some("input"));
-        assert_node_before(input, 27, Some("span"));
-        assert_node_before(input, 32, Some("span"));
-        assert_node_before(input, 33, Some("br"));
-        assert_node_before(input, 36, Some("br"));
-        assert_node_before(input, 37, Some("hr"));
-        assert_node_before(input, 40, Some("hr"));
-        assert_node_before(input, 41, Some("hr"));
-        assert_node_before(input, 42, Some("hr"));
-        assert_node_before(input, 47, Some("span"));
-        assert_node_before(input, 48, Some("span"));
-        assert_node_before(input, 52, Some("span"));
-        assert_node_before(input, 53, Some("div"));
+        assert_node_before(input, 0, None).await;
+        assert_node_before(input, 1, Some("div")).await;
+        assert_node_before(input, 5, Some("div")).await;
+        assert_node_before(input, 6, Some("input")).await;
+        assert_node_before(input, 25, Some("input")).await;
+        assert_node_before(input, 26, Some("input")).await;
+        assert_node_before(input, 27, Some("span")).await;
+        assert_node_before(input, 32, Some("span")).await;
+        assert_node_before(input, 33, Some("br")).await;
+        assert_node_before(input, 36, Some("br")).await;
+        assert_node_before(input, 37, Some("hr")).await;
+        assert_node_before(input, 40, Some("hr")).await;
+        assert_node_before(input, 41, Some("hr")).await;
+        assert_node_before(input, 42, Some("hr")).await;
+        assert_node_before(input, 47, Some("span")).await;
+        assert_node_before(input, 48, Some("span")).await;
+        assert_node_before(input, 52, Some("span")).await;
+        assert_node_before(input, 53, Some("div")).await;
     }
 
-    #[test]
-    fn find_node_before_incomplete_node() {
+    #[tokio::test]
+    async fn find_node_before_incomplete_node() {
         let input = "<div><span><br></div>";
-        assert_node_before(input, 15, Some("br"));
-        assert_node_before(input, 18, Some("br"));
-        assert_node_before(input, 21, Some("div"));
+        assert_node_before(input, 15, Some("br")).await;
+        assert_node_before(input, 18, Some("br")).await;
+        assert_node_before(input, 21, Some("div")).await;
     }
 
-    #[test]
-    fn attributes() {
+    #[tokio::test]
+    async fn attributes() {
         let input = r#"<div class="these are my-classes" id="test"><span aria-describedby="test"></span></div>"#;
         assert_attributes(
             input,
@@ -757,10 +764,11 @@ mod tests {
                 }],
             }],
         )
+        .await;
     }
 
-    #[test]
-    fn attributes_without_value() {
+    #[tokio::test]
+    async fn attributes_without_value() {
         let input = r#"<div checked id="test"></div>"#;
         assert_attributes(
             input,
@@ -772,7 +780,8 @@ mod tests {
                 ]),
                 children: vec![],
             }],
-        );
+        )
+        .await;
     }
 
     #[derive(PartialEq, Debug)]

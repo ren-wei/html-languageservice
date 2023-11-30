@@ -1,8 +1,9 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{Hover, HoverContents, MarkedString, MarkupContent, MarkupKind, Position, Range};
 use regex::Regex;
+use tokio::sync::RwLock;
 
 use crate::{
     language_facts::{
@@ -39,7 +40,7 @@ impl HTMLHover {
         }
     }
 
-    pub fn do_hover(
+    pub async fn do_hover(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -47,26 +48,28 @@ impl HTMLHover {
         options: Option<HoverSettings>,
     ) -> Option<Hover> {
         let offset = document.offset_at(*position) as usize;
-        let node = html_document.find_node_at(offset);
+        let node = html_document.find_node_at(offset).await;
         let text = document.get_content(None);
 
-        if node.is_none()
-            || node
-                .clone()
-                .is_some_and(|v| v.read().unwrap().tag.is_none())
-        {
+        if node.is_none() {
             return None;
+        }
+        if let Some(node) = &node {
+            if node.read().await.tag.is_none() {
+                return None;
+            }
         }
 
         let _node = node.unwrap();
-        let node = _node.read().unwrap();
+        let node = _node.read().await;
 
-        let data_manager = self.data_manager.read().unwrap();
-        let data_providers: Vec<_> = data_manager
-            .get_data_providers()
-            .iter()
-            .filter(|p| p.read().unwrap().is_applicable(document.language_id()))
-            .collect();
+        let data_manager = self.data_manager.read().await;
+        let mut data_providers = vec![];
+        for provider in data_manager.get_data_providers() {
+            if provider.read().await.is_applicable(document.language_id()) {
+                data_providers.push(Arc::clone(provider));
+            }
+        }
 
         let options = if options.is_some() {
             options.unwrap()
@@ -94,24 +97,28 @@ impl HTMLHover {
                 &mut context,
             );
             if tag_range.is_some() {
-                return self.get_tag_hover(
-                    &node.tag.clone().unwrap(),
-                    tag_range.unwrap(),
-                    false,
-                    &mut context,
-                );
+                return self
+                    .get_tag_hover(
+                        &node.tag.clone().unwrap(),
+                        tag_range.unwrap(),
+                        false,
+                        &mut context,
+                    )
+                    .await;
             }
             return None;
         }
 
         let tag_range = self.get_tag_name_range(TokenType::StartTag, node.start, &mut context);
         if tag_range.is_some() {
-            return self.get_tag_hover(
-                &node.tag.clone().unwrap(),
-                tag_range.unwrap(),
-                true,
-                &mut context,
-            );
+            return self
+                .get_tag_hover(
+                    &node.tag.clone().unwrap(),
+                    tag_range.unwrap(),
+                    true,
+                    &mut context,
+                )
+                .await;
         }
 
         let attr_range =
@@ -119,7 +126,9 @@ impl HTMLHover {
         if attr_range.is_some() {
             let tag = node.tag.clone().unwrap();
             let attr = document.get_content(attr_range);
-            return self.get_attr_hover(&tag, attr, attr_range.unwrap(), &mut context);
+            return self
+                .get_attr_hover(&tag, attr, attr_range.unwrap(), &mut context)
+                .await;
         }
 
         let entity_range = self.get_entity_range(&mut context);
@@ -139,30 +148,32 @@ impl HTMLHover {
                 &mut context,
             );
             if match_attr.is_some() {
-                return self.get_attr_value_hover(
-                    &tag,
-                    &match_attr.unwrap(),
-                    attr_value,
-                    attr_value_range,
-                    &mut context,
-                );
+                return self
+                    .get_attr_value_hover(
+                        &tag,
+                        &match_attr.unwrap(),
+                        attr_value,
+                        attr_value_range,
+                        &mut context,
+                    )
+                    .await;
             }
         }
 
         None
     }
 
-    fn get_tag_hover(
+    async fn get_tag_hover<'a>(
         &self,
         cur_tag: &str,
         range: Range,
         _open: bool,
-        context: &mut HoverContext,
+        context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for tag in provider.read().unwrap().provide_tags() {
+            for tag in provider.read().await.provide_tags() {
                 if tag.name.to_lowercase() == cur_tag.to_lowercase() {
                     let markup_content = generate_documentation(
                         GenerateDocumentationItem {
@@ -196,17 +207,17 @@ impl HTMLHover {
         None
     }
 
-    fn get_attr_hover(
+    async fn get_attr_hover<'a>(
         &self,
         cur_tag: &str,
         cur_attr: &str,
         range: Range,
-        context: &mut HoverContext,
+        context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for attr in provider.read().unwrap().provide_attributes(cur_tag) {
+            for attr in provider.read().await.provide_attributes(cur_tag) {
                 if cur_attr == attr.name && attr.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -237,17 +248,17 @@ impl HTMLHover {
         None
     }
 
-    fn get_attr_value_hover(
+    async fn get_attr_value_hover<'a>(
         &self,
         cur_tag: &str,
         cur_attr: &str,
         cur_attr_value: &str,
         range: Range,
-        context: &mut HoverContext,
+        context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
         for provider in &context.data_providers {
             let mut hover = None;
-            for attr_value in provider.read().unwrap().provide_values(cur_tag, cur_attr) {
+            for attr_value in provider.read().await.provide_values(cur_tag, cur_attr) {
                 if cur_attr_value == attr_value.name && attr_value.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -501,7 +512,7 @@ pub struct HoverSettings {
 
 struct HoverContext<'a> {
     options: HoverSettings,
-    data_providers: Vec<&'a Arc<RwLock<dyn IHTMLDataProvider>>>,
+    data_providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
     offset: usize,
     position: &'a Position,
     document: &'a FullTextDocument,
