@@ -110,6 +110,7 @@ impl Node {
         for (i, child) in node.children.iter().enumerate() {
             if offset <= child.read().await.start {
                 idx = i;
+                break;
             }
         }
 
@@ -137,6 +138,7 @@ impl HTMLDocument {
         for (i, child) in self.roots.iter().enumerate() {
             if offset <= child.read().await.start {
                 idx = i;
+                break;
             }
         }
         if idx > 0 {
@@ -166,6 +168,7 @@ impl HTMLDocument {
         for (i, child) in self.roots.iter().enumerate() {
             if offset <= child.read().await.start {
                 idx = i;
+                break;
             }
         }
 
