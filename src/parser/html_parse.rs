@@ -182,6 +182,15 @@ impl HTMLDocument {
         }
         None
     }
+
+    pub async fn find_root_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+        for root in &self.roots {
+            if offset <= root.read().await.end {
+                return Some(Arc::clone(root));
+            }
+        }
+        None
+    }
 }
 
 pub struct HTMLParser {
