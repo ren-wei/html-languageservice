@@ -18,6 +18,7 @@ use crate::{
         html_parse::HTMLDocument,
         html_scanner::{Scanner, ScannerState, TokenType},
     },
+    participant::{HtmlAttributeValueContext, HtmlContentContext, IHoverParticipant},
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
     LanguageServiceOptions,
 };
@@ -26,6 +27,7 @@ pub struct HTMLHover {
     _ls_options: Arc<LanguageServiceOptions>,
     data_manager: Arc<RwLock<HTMLDataManager>>,
     supports_markdown: bool,
+    hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
 }
 
 impl HTMLHover {
@@ -37,7 +39,15 @@ impl HTMLHover {
             _ls_options: Arc::clone(&ls_options),
             data_manager,
             supports_markdown: does_support_markdown(Arc::clone(&ls_options)),
+            hover_participants: vec![],
         }
+    }
+
+    pub fn set_hover_participants(
+        &mut self,
+        hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
+    ) {
+        self.hover_participants = hover_participants;
     }
 
     pub async fn do_hover(
@@ -160,6 +170,16 @@ impl HTMLHover {
             }
         }
 
+        for participant in &self.hover_participants {
+            let hover = participant
+                .read()
+                .await
+                .on_html_content(HtmlContentContext { document, position });
+            if let Some(hover) = hover {
+                return Some(hover);
+            }
+        }
+
         None
     }
 
@@ -256,8 +276,24 @@ impl HTMLHover {
         range: Range,
         context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
+        for hover_participant in &self.hover_participants {
+            if let Some(hover) =
+                hover_participant
+                    .read()
+                    .await
+                    .on_html_attribute_value(HtmlAttributeValueContext {
+                        document: context.document,
+                        position: context.position,
+                        tag: cur_tag.to_string(),
+                        attribute: cur_attr.to_string(),
+                        value: cur_attr_value.to_string(),
+                        range,
+                    })
+            {
+                return Some(hover);
+            }
+        }
         for provider in &context.data_providers {
-            let mut hover = None;
             for attr_value in provider.read().await.provide_values(cur_tag, cur_attr) {
                 if cur_attr_value == attr_value.name && attr_value.description.is_some() {
                     let contents = generate_documentation(
@@ -272,18 +308,13 @@ impl HTMLHover {
                         },
                     );
                     if contents.is_some() {
-                        hover = Some(Hover {
+                        return Some(Hover {
                             contents: self
                                 .convert_contents(HoverContents::Markup(contents.unwrap())),
                             range: Some(range),
-                        })
-                    } else {
-                        hover = None
+                        });
                     }
                 }
-            }
-            if hover.is_some() {
-                return hover;
             }
         }
         None

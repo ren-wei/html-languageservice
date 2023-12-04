@@ -22,6 +22,7 @@ use crate::{
         html_parse::{HTMLDocument, Node},
         html_scanner::{Scanner, ScannerState, TokenType},
     },
+    participant::{HtmlAttributeValueContext, HtmlContentContext, ICompletionParticipant},
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
     LanguageServiceOptions,
 };
@@ -48,9 +49,9 @@ impl HTMLCompletion {
 
     pub fn set_completion_participants(
         &mut self,
-        registered_completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
+        completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
     ) {
-        self.completion_participants = registered_completion_participants;
+        self.completion_participants = completion_participants;
     }
 
     pub async fn do_complete(
@@ -913,25 +914,6 @@ fn get_word_end(s: &str, offset: usize, limit: usize) -> usize {
         offset += 1;
     }
     offset
-}
-
-pub trait ICompletionParticipant: Send + Sync {
-    fn on_html_attribute_value(&self, context: HtmlAttributeValueContext) -> Vec<CompletionItem>;
-    fn on_html_content(&self, context: HtmlContentContext) -> Vec<CompletionItem>;
-}
-
-pub struct HtmlAttributeValueContext<'a> {
-    pub document: &'a FullTextDocument,
-    pub position: &'a Position,
-    pub tag: String,
-    pub attribute: String,
-    pub value: String,
-    pub range: Range,
-}
-
-pub struct HtmlContentContext<'a> {
-    pub document: &'a FullTextDocument,
-    pub position: &'a Position,
 }
 
 pub trait DocumentContext {
