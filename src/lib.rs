@@ -1,5 +1,6 @@
 pub mod html_data;
 pub mod language_facts;
+pub mod log;
 pub mod parser;
 pub mod services;
 pub mod utils;
@@ -83,7 +84,7 @@ impl LanguageService {
 
     pub fn set_completion_participants(
         &mut self,
-        registered_completion_participants: Vec<Arc<dyn ICompletionParticipant>>,
+        registered_completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
     ) {
         self.html_completion
             .set_completion_participants(registered_completion_participants);

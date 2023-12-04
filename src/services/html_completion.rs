@@ -30,7 +30,7 @@ pub struct HTMLCompletion {
     _ls_options: Arc<LanguageServiceOptions>,
     data_manager: Arc<RwLock<HTMLDataManager>>,
     supports_markdown: bool,
-    completion_participants: Vec<Arc<dyn ICompletionParticipant>>,
+    completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
 }
 
 impl HTMLCompletion {
@@ -48,7 +48,7 @@ impl HTMLCompletion {
 
     pub fn set_completion_participants(
         &mut self,
-        registered_completion_participants: Vec<Arc<dyn ICompletionParticipant>>,
+        registered_completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
     ) {
         self.completion_participants = registered_completion_participants;
     }
@@ -234,7 +234,7 @@ impl HTMLCompletion {
                                 return result;
                             }
                             ScannerState::WithinContent => {
-                                content.collect_inside_content();
+                                content.collect_inside_content().await;
                                 return result;
                             }
                             _ => {}
@@ -256,7 +256,7 @@ impl HTMLCompletion {
                 }
                 TokenType::Content => {
                     if offset <= scanner.get_token_end() {
-                        content.collect_inside_content();
+                        content.collect_inside_content().await;
                         return result;
                     }
                 }
@@ -322,7 +322,7 @@ struct CompletionContext<'a> {
     does_support_markdown: bool,
     html_document: &'a HTMLDocument,
     current_attribute_name: String,
-    completion_participants: &'a Vec<Arc<dyn ICompletionParticipant>>,
+    completion_participants: &'a Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
     position: &'a Position,
     data_manager: Arc<RwLock<HTMLDataManager>>,
 }
@@ -599,14 +599,18 @@ impl CompletionContext<'_> {
             let attribute = self.current_attribute_name.to_lowercase();
             let full_range = self.get_replace_range(value_start, value_end);
             for participant in self.completion_participants {
-                participant.on_html_attribute_value(HtmlAttributeValueContext {
-                    document: self.document,
-                    position: self.position,
-                    tag: tag.clone(),
-                    attribute: attribute.clone(),
-                    value: value_prefix.to_string(),
-                    range: full_range,
-                });
+                self.result
+                    .items
+                    .append(&mut participant.read().await.on_html_attribute_value(
+                        HtmlAttributeValueContext {
+                            document: self.document,
+                            position: self.position,
+                            tag: tag.clone(),
+                            attribute: attribute.clone(),
+                            value: value_prefix.to_string(),
+                            range: full_range,
+                        },
+                    ));
             }
         }
 
@@ -777,12 +781,19 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_inside_content(&mut self) {
+    async fn collect_inside_content(&mut self) {
         for participant in self.completion_participants {
-            participant.on_html_content(HtmlContentContext {
-                document: self.document,
-                position: self.position,
-            })
+            self.result
+                .items
+                .append(
+                    &mut participant
+                        .read()
+                        .await
+                        .on_html_content(HtmlContentContext {
+                            document: self.document,
+                            position: self.position,
+                        }),
+                );
         }
         self.collect_character_entity_proposals();
     }
@@ -905,8 +916,8 @@ fn get_word_end(s: &str, offset: usize, limit: usize) -> usize {
 }
 
 pub trait ICompletionParticipant: Send + Sync {
-    fn on_html_attribute_value(&self, context: HtmlAttributeValueContext);
-    fn on_html_content(&self, context: HtmlContentContext);
+    fn on_html_attribute_value(&self, context: HtmlAttributeValueContext) -> Vec<CompletionItem>;
+    fn on_html_content(&self, context: HtmlContentContext) -> Vec<CompletionItem>;
 }
 
 pub struct HtmlAttributeValueContext<'a> {
