@@ -1,10 +1,10 @@
 pub mod html_data;
 pub mod language_facts;
-pub mod log;
+mod log;
 pub mod parser;
 pub mod participant;
 pub mod services;
-pub mod utils;
+mod utils;
 
 pub use parser::html_parse::parse_html_document;
 use participant::{ICompletionParticipant, IHoverParticipant};

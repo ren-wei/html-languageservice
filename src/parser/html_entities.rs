@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-/**
- * HTML 5 character entities
- * https://www.w3.org/TR/html5/syntax.html#named-character-references
- */
+/// HTML 5 character entities
+///
+/// <https://www.w3.org/TR/html5/syntax.html#named-character-references>
 pub fn get_entities() -> HashMap<&'static str, &'static str> {
     HashMap::from([
         ("Aacute;", "\u{00C1}"),
