@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 license-file = "LICENSE"
 description = "The basics of an HTML language server."
+homepage = "https://github.com/ren-wei/html-languageservice"
+documentation = "https://github.com/ren-wei/html-languageservice"
+repository = "https://github.com/ren-wei/html-languageservice"
+readme = "README.md"
+keywords = ["html", "lsp", "languageservice", "languageserver"]
+categories = ["development-tools"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
