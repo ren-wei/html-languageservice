@@ -95,6 +95,7 @@ impl HTMLHover {
             offset,
             position,
             document,
+            html_document,
         };
 
         if node
@@ -174,7 +175,11 @@ impl HTMLHover {
             let hover = participant
                 .read()
                 .await
-                .on_html_content(HtmlContentContext { document, position });
+                .on_html_content(HtmlContentContext {
+                    document,
+                    html_document,
+                    position,
+                });
             if let Some(hover) = hover {
                 return Some(hover);
             }
@@ -283,6 +288,7 @@ impl HTMLHover {
                     .await
                     .on_html_attribute_value(HtmlAttributeValueContext {
                         document: context.document,
+                        html_document: context.html_document,
                         position: context.position,
                         tag: cur_tag.to_string(),
                         attribute: cur_attr.to_string(),
@@ -546,6 +552,7 @@ struct HoverContext<'a> {
     offset: usize,
     position: &'a Position,
     document: &'a FullTextDocument,
+    html_document: &'a HTMLDocument,
 }
 
 #[cfg(test)]

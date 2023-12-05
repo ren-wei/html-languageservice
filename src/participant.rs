@@ -1,6 +1,8 @@
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{CompletionItem, Hover, Position, Range};
 
+use crate::parser::html_parse::HTMLDocument;
+
 pub trait ICompletionParticipant: Send + Sync {
     fn on_html_attribute_value(&self, context: HtmlAttributeValueContext) -> Vec<CompletionItem>;
     fn on_html_content(&self, context: HtmlContentContext) -> Vec<CompletionItem>;
@@ -13,6 +15,7 @@ pub trait IHoverParticipant: Send + Sync {
 
 pub struct HtmlAttributeValueContext<'a> {
     pub document: &'a FullTextDocument,
+    pub html_document: &'a HTMLDocument,
     pub position: &'a Position,
     pub tag: String,
     pub attribute: String,
@@ -22,5 +25,6 @@ pub struct HtmlAttributeValueContext<'a> {
 
 pub struct HtmlContentContext<'a> {
     pub document: &'a FullTextDocument,
+    pub html_document: &'a HTMLDocument,
     pub position: &'a Position,
 }

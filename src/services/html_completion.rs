@@ -605,6 +605,7 @@ impl CompletionContext<'_> {
                     .append(&mut participant.read().await.on_html_attribute_value(
                         HtmlAttributeValueContext {
                             document: self.document,
+                            html_document: self.html_document,
                             position: self.position,
                             tag: tag.clone(),
                             attribute: attribute.clone(),
@@ -792,6 +793,7 @@ impl CompletionContext<'_> {
                         .await
                         .on_html_content(HtmlContentContext {
                             document: self.document,
+                            html_document: self.html_document,
                             position: self.position,
                         }),
                 );
