@@ -127,6 +127,7 @@ impl Node {
     }
 }
 
+#[derive(Clone)]
 pub struct HTMLDocument {
     pub roots: Vec<Arc<RwLock<Node>>>,
 }

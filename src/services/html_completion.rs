@@ -600,19 +600,25 @@ impl CompletionContext<'_> {
             let attribute = self.current_attribute_name.to_lowercase();
             let full_range = self.get_replace_range(value_start, value_end);
             for participant in self.completion_participants {
-                self.result
-                    .items
-                    .append(&mut participant.read().await.on_html_attribute_value(
-                        HtmlAttributeValueContext {
-                            document: self.document,
-                            html_document: self.html_document,
-                            position: self.position,
+                self.result.items.append(
+                    &mut participant
+                        .read()
+                        .await
+                        .on_html_attribute_value(HtmlAttributeValueContext {
+                            document: FullTextDocument::new(
+                                self.document.language_id().to_string(),
+                                self.document.version(),
+                                self.document.get_content(None).to_string(),
+                            ),
+                            html_document: self.html_document.clone(),
+                            position: *self.position,
                             tag: tag.clone(),
                             attribute: attribute.clone(),
                             value: value_prefix.to_string(),
                             range: full_range,
-                        },
-                    ));
+                        })
+                        .await,
+                );
             }
         }
 
@@ -785,18 +791,21 @@ impl CompletionContext<'_> {
 
     async fn collect_inside_content(&mut self) {
         for participant in self.completion_participants {
-            self.result
-                .items
-                .append(
-                    &mut participant
-                        .read()
-                        .await
-                        .on_html_content(HtmlContentContext {
-                            document: self.document,
-                            html_document: self.html_document,
-                            position: self.position,
-                        }),
-                );
+            self.result.items.append(
+                &mut participant
+                    .read()
+                    .await
+                    .on_html_content(HtmlContentContext {
+                        document: FullTextDocument::new(
+                            self.document.language_id().to_string(),
+                            self.document.version(),
+                            self.document.get_content(None).to_string(),
+                        ),
+                        html_document: self.html_document.clone(),
+                        position: *self.position,
+                    })
+                    .await,
+            );
         }
         self.collect_character_entity_proposals();
     }

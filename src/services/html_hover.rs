@@ -176,10 +176,15 @@ impl HTMLHover {
                 .read()
                 .await
                 .on_html_content(HtmlContentContext {
-                    document,
-                    html_document,
-                    position,
-                });
+                    document: FullTextDocument::new(
+                        document.language_id().to_string(),
+                        document.version(),
+                        document.get_content(None).to_string(),
+                    ),
+                    html_document: html_document.clone(),
+                    position: *position,
+                })
+                .await;
             if let Some(hover) = hover {
                 return Some(hover);
             }
@@ -282,19 +287,23 @@ impl HTMLHover {
         context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
         for hover_participant in &self.hover_participants {
-            if let Some(hover) =
-                hover_participant
-                    .read()
-                    .await
-                    .on_html_attribute_value(HtmlAttributeValueContext {
-                        document: context.document,
-                        html_document: context.html_document,
-                        position: context.position,
-                        tag: cur_tag.to_string(),
-                        attribute: cur_attr.to_string(),
-                        value: cur_attr_value.to_string(),
-                        range,
-                    })
+            if let Some(hover) = hover_participant
+                .read()
+                .await
+                .on_html_attribute_value(HtmlAttributeValueContext {
+                    document: FullTextDocument::new(
+                        context.document.language_id().to_string(),
+                        context.document.version(),
+                        context.document.get_content(None).to_string(),
+                    ),
+                    html_document: context.html_document.clone(),
+                    position: *context.position,
+                    tag: cur_tag.to_string(),
+                    attribute: cur_attr.to_string(),
+                    value: cur_attr_value.to_string(),
+                    range,
+                })
+                .await
             {
                 return Some(hover);
             }
