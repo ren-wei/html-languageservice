@@ -1,6 +1,5 @@
 pub mod html_data;
 pub mod language_facts;
-mod log;
 pub mod parser;
 pub mod participant;
 pub mod services;
