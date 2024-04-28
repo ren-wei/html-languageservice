@@ -441,7 +441,7 @@ impl MultiLineStream<'_> {
     pub fn new<'a>(source: &'a str, position: usize) -> MultiLineStream<'a> {
         MultiLineStream {
             source,
-            len: source.chars().count(),
+            len: source.len(),
             position,
         }
     }
