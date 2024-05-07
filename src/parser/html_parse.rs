@@ -15,13 +15,17 @@ use super::html_scanner::ScannerState;
 
 #[derive(Debug)]
 pub struct Node {
+    /// It's None only when new
     pub tag: Option<String>,
     pub start: usize,
     pub end: usize,
     pub children: Vec<Arc<RwLock<Node>>>,
     pub parent: Weak<RwLock<Node>>,
+    /// Whether part of end tag exists
     pub closed: bool,
+    /// It's None only when new, it larger than end of start tag
     pub start_tag_end: Option<usize>,
+    /// It's None only when it's closed or it miss part of end tag, it equals start of end tag
     pub end_tag_start: Option<usize>,
     pub attributes: HashMap<String, Option<String>>,
 }
@@ -108,7 +112,7 @@ impl Node {
         let node = raw_node.read().await;
         let mut idx = node.children.len();
         for (i, child) in node.children.iter().enumerate() {
-            if offset <= child.read().await.start {
+            if offset < child.read().await.start {
                 idx = i;
                 break;
             }
@@ -117,13 +121,62 @@ impl Node {
         if idx > 0 {
             let raw_child = Arc::clone(&node.children[idx - 1]);
             let child = raw_child.read().await;
-            if offset > child.start && offset <= child.end {
+            if offset >= child.start && offset < child.end {
                 drop(child);
                 return Node::find_node_at(raw_child, offset).await;
             }
         }
         drop(node);
         raw_node
+    }
+
+    /// Find TokenType in node at offset
+    ///
+    /// it return StartTagOpen, StartTag, StartTagClose, StartTagSelfClose, Content, EndTagOpen, EndTag, EndTagClose, Unknown
+    ///
+    /// if offset in children, then it's Content
+    /// if offset outside of node then it's Unknown
+    pub async fn find_token_type_in_node(node: Arc<RwLock<Node>>, offset: usize) -> TokenType {
+        let node = node.read().await;
+        if node.start > offset || node.end <= offset {
+            return TokenType::Unknown;
+        }
+        let tag = node.tag.as_ref().unwrap();
+        if node.start == offset {
+            return TokenType::StartTagOpen;
+        }
+        if offset < node.start + 1 + tag.len() {
+            return TokenType::StartTag;
+        }
+        let start_tag_end = *node.start_tag_end.as_ref().unwrap();
+        if offset >= start_tag_end {
+            if let Some(end_tag_start) = node.end_tag_start {
+                if offset < end_tag_start {
+                    return TokenType::Content;
+                } else if offset == end_tag_start || offset == end_tag_start + 1 {
+                    return TokenType::EndTagOpen;
+                } else if offset < node.end - 1 {
+                    return TokenType::EndTag;
+                } else {
+                    return TokenType::EndTagClose;
+                }
+            } else if start_tag_end == node.end {
+                if offset >= node.end - 2 {
+                    return TokenType::StartTagSelfClose;
+                }
+            }
+        } else {
+            if start_tag_end == node.end {
+                if offset >= start_tag_end - 2 {
+                    return TokenType::StartTagSelfClose;
+                }
+            } else {
+                if offset >= start_tag_end - 1 {
+                    return TokenType::StartTagClose;
+                }
+            }
+        }
+        TokenType::Unknown
     }
 }
 
@@ -167,7 +220,7 @@ impl HTMLDocument {
     pub async fn find_node_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
         let mut idx = self.roots.len();
         for (i, child) in self.roots.iter().enumerate() {
-            if offset <= child.read().await.start {
+            if offset < child.read().await.start {
                 idx = i;
                 break;
             }
@@ -176,7 +229,7 @@ impl HTMLDocument {
         if idx > 0 {
             let raw_child = Arc::clone(&self.roots[idx - 1]);
             let child = raw_child.read().await;
-            if offset > child.start && offset <= child.end {
+            if offset >= child.start && offset < child.end {
                 drop(child);
                 return Some(Node::find_node_at(raw_child, offset).await);
             }
@@ -396,7 +449,25 @@ mod tests {
                 Some(expected_tag.unwrap_or_default().to_string())
             );
         } else {
-            assert_eq!(expected_tag, None);
+            assert_eq!(None, expected_tag);
+        }
+    }
+
+    async fn assert_find_token_type_in_node(
+        input: &str,
+        offset: usize,
+        expected_token_type: TokenType,
+    ) {
+        let document = parse(input).await;
+        let node = document.find_node_at(offset).await;
+        println!("{:#?}", node);
+        if let Some(node) = node {
+            assert_eq!(
+                Node::find_token_type_in_node(node, offset).await,
+                expected_token_type
+            );
+        } else {
+            assert_eq!(TokenType::Unknown, expected_token_type);
         }
     }
 
@@ -751,6 +822,39 @@ mod tests {
         assert_node_before(input, 15, Some("br")).await;
         assert_node_before(input, 18, Some("br")).await;
         assert_node_before(input, 21, Some("div")).await;
+    }
+
+    #[tokio::test]
+    async fn find_token_type_in_node() {
+        // ------------------0----5---10---15---20---25---30---35---40---45---50-2
+        let input = r#"<div><input type="button"/><span>content</span></div>"#;
+        assert_find_token_type_in_node(&input, 0, TokenType::StartTagOpen).await;
+        assert_find_token_type_in_node(&input, 1, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 3, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 4, TokenType::StartTagClose).await;
+        assert_find_token_type_in_node(&input, 5, TokenType::StartTagOpen).await;
+        assert_find_token_type_in_node(&input, 6, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 10, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 11, TokenType::Unknown).await;
+        assert_find_token_type_in_node(&input, 24, TokenType::Unknown).await;
+        assert_find_token_type_in_node(&input, 25, TokenType::StartTagSelfClose).await;
+        assert_find_token_type_in_node(&input, 26, TokenType::StartTagSelfClose).await;
+        assert_find_token_type_in_node(&input, 27, TokenType::StartTagOpen).await;
+        assert_find_token_type_in_node(&input, 28, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 31, TokenType::StartTag).await;
+        assert_find_token_type_in_node(&input, 32, TokenType::StartTagClose).await;
+        assert_find_token_type_in_node(&input, 33, TokenType::Content).await;
+        assert_find_token_type_in_node(&input, 39, TokenType::Content).await;
+        assert_find_token_type_in_node(&input, 40, TokenType::EndTagOpen).await;
+        assert_find_token_type_in_node(&input, 41, TokenType::EndTagOpen).await;
+        assert_find_token_type_in_node(&input, 42, TokenType::EndTag).await;
+        assert_find_token_type_in_node(&input, 45, TokenType::EndTag).await;
+        assert_find_token_type_in_node(&input, 46, TokenType::EndTagClose).await;
+        assert_find_token_type_in_node(&input, 47, TokenType::EndTagOpen).await;
+        assert_find_token_type_in_node(&input, 48, TokenType::EndTagOpen).await;
+        assert_find_token_type_in_node(&input, 49, TokenType::EndTag).await;
+        assert_find_token_type_in_node(&input, 51, TokenType::EndTag).await;
+        assert_find_token_type_in_node(&input, 52, TokenType::EndTagClose).await;
     }
 
     #[tokio::test]
