@@ -55,7 +55,7 @@ impl LanguageService {
     }
 
     pub fn create_scanner(input: &str, initial_offset: usize) -> Scanner {
-        Scanner::new(input, initial_offset, ScannerState::WithinContent)
+        Scanner::new(input, initial_offset, ScannerState::WithinContent, false)
     }
 
     pub async fn parse_html_document(&self, document: &FullTextDocument) -> HTMLDocument {

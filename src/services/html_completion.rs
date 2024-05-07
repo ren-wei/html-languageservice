@@ -111,7 +111,7 @@ impl HTMLCompletion {
 
         let node = node.read().await;
 
-        let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent);
+        let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent, true);
 
         let mut token = scanner.scan();
 
@@ -903,7 +903,7 @@ fn is_followed_by(
     initial_state: ScannerState,
     expected_token: TokenType,
 ) -> bool {
-    let mut scanner = Scanner::new(s, offset, initial_state);
+    let mut scanner = Scanner::new(s, offset, initial_state, false);
     let mut token = scanner.scan();
     while token == TokenType::Whitespace {
         token = scanner.scan();

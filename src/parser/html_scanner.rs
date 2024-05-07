@@ -19,6 +19,7 @@ impl Scanner<'_> {
         input: &'a str,
         initial_offset: usize,
         initial_state: ScannerState,
+        emit_pseudo_close_tags: bool,
     ) -> Scanner<'a> {
         let stream = MultiLineStream::new(input, initial_offset);
         let token_offset = 0;
@@ -29,7 +30,7 @@ impl Scanner<'_> {
             token_offset,
             token_error: None,
             stream,
-            emit_pseudo_close_tags: false,
+            emit_pseudo_close_tags,
             has_space_after_tag: false,
             last_tag: None,
             last_attribute_name: None,
@@ -654,7 +655,7 @@ mod tests {
         let mut scanner_state = ScannerState::WithinContent;
 
         for t in tests {
-            let mut scanner = Scanner::new(&t.input, 0, scanner_state);
+            let mut scanner = Scanner::new(&t.input, 0, scanner_state, false);
             let mut token_type = scanner.scan();
             let mut actual = vec![];
             while token_type != TokenType::EOS {

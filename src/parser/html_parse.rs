@@ -220,7 +220,7 @@ pub async fn parse_html_document(
 ) -> HTMLDocument {
     let manager = data_manager.read().await;
     let void_elements = manager.get_void_elements(language_id).await;
-    let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent);
+    let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent, true);
 
     let html_document = Arc::new(RwLock::new(Node::new(0, text.len(), vec![], Weak::new())));
     let mut cur = Arc::clone(&html_document);

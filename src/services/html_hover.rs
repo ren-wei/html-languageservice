@@ -392,6 +392,7 @@ impl HTMLHover {
             context.document.get_content(None),
             start_offset,
             ScannerState::WithinContent,
+            false,
         );
         let mut token = scanner.scan();
         while token != TokenType::EOS
@@ -490,6 +491,7 @@ impl HTMLHover {
             context.document.get_content(None),
             node_start,
             ScannerState::WithinContent,
+            false,
         );
         let mut token = scanner.scan();
         let mut prev_attr = None;
