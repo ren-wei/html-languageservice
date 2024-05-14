@@ -31,8 +31,14 @@ impl LanguageService {
         options: Arc<LanguageServiceOptions>,
         custom_data_providers: Option<Vec<Arc<RwLock<dyn IHTMLDataProvider>>>>,
     ) -> LanguageService {
+        let use_default_data_provider =
+            if let Some(use_default_data_provider) = options.use_default_data_provider {
+                use_default_data_provider
+            } else {
+                true
+            };
         let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(
-            true,
+            use_default_data_provider,
             custom_data_providers,
         )));
         LanguageService {
