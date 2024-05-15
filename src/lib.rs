@@ -104,6 +104,17 @@ impl LanguageService {
         HTMLCompletion::do_quote_complete(document, position, html_document, settings).await
     }
 
+    pub async fn do_tag_complete(
+        &self,
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+    ) -> Option<String> {
+        self.html_completion
+            .do_tag_complete(document, position, html_document)
+            .await
+    }
+
     pub async fn do_hover(
         &self,
         document: &FullTextDocument,

@@ -319,7 +319,7 @@ impl HTMLCompletion {
         if offset == 0 {
             return None;
         }
-        if document.get_content(None).get((offset - 1)..offset) != Some("=") {
+        if document.get_content(None).as_bytes()[offset - 1] != b'=' {
             return None;
         }
         let default_value = if let Some(settings) = settings {
@@ -362,6 +362,81 @@ impl HTMLCompletion {
                         return None;
                     }
                     return Some(value);
+                }
+                token = scanner.scan();
+            }
+        }
+        None
+    }
+
+    pub async fn do_tag_complete(
+        &self,
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+    ) -> Option<String> {
+        let offset = document.offset_at(*position) as usize;
+        if offset == 0 {
+            return None;
+        }
+        let char = document.get_content(None).as_bytes()[offset - 1];
+        if char == b'>' {
+            let data_manager = self.data_manager.read().await;
+            let void_elements = data_manager.get_void_elements(document.language_id()).await;
+            let node = html_document.find_node_before(offset).await?;
+            let node = node.read().await;
+            let node_tag = node.tag.as_ref()?;
+            if !data_manager.is_void_element(&node_tag, &void_elements)
+                && node.start < offset
+                && !node
+                    .end_tag_start
+                    .is_some_and(|end_tag_start| end_tag_start <= offset)
+            {
+                let mut scanner = Scanner::new(
+                    document.get_content(None),
+                    node.start,
+                    ScannerState::WithinContent,
+                    false,
+                );
+                let mut token = scanner.scan();
+                while token != TokenType::EOS && scanner.get_token_end() <= offset {
+                    if token == TokenType::StartTagClose && scanner.get_token_end() == offset {
+                        return Some(format!("$0</{}>", node_tag));
+                    }
+                    token = scanner.scan();
+                }
+            }
+        } else if char == b'/' {
+            let mut node_wrap = html_document.find_node_before(offset).await?;
+            loop {
+                let node = node_wrap.read().await;
+                if !node.closed
+                    || node
+                        .end_tag_start
+                        .is_some_and(|end_tag_start| end_tag_start > offset)
+                {
+                    break;
+                }
+                let parent = node.parent.upgrade()?;
+                drop(node);
+                node_wrap = parent;
+            }
+            let node = node_wrap.read().await;
+            let node_tag = node.tag.as_ref()?;
+            let mut scanner = Scanner::new(
+                document.get_content(None),
+                node.start,
+                ScannerState::WithinContent,
+                false,
+            );
+            let mut token = scanner.scan();
+            while token != TokenType::EOS && scanner.get_token_end() <= offset {
+                if token == TokenType::EndTagOpen && scanner.get_token_end() == offset {
+                    if document.get_content(None).as_bytes().get(offset) != Some(&b'>') {
+                        return Some(format!("{}>", node_tag));
+                    } else {
+                        return Some(node_tag.clone());
+                    }
                 }
                 token = scanner.scan();
             }
@@ -1175,6 +1250,22 @@ mod tests {
         let html_document = ls.parse_html_document(&document).await;
         let actual =
             HTMLCompletion::do_quote_complete(&document, &position, &html_document, options).await;
+        assert_eq!(actual, expected);
+    }
+
+    async fn test_tag_completion(value: &str, expected: Option<String>) {
+        let offset = value.find('|').unwrap();
+        let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
+
+        let ls_options = Arc::new(LanguageServiceOptions::default());
+        let ls = LanguageService::new(ls_options, None);
+
+        let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
+        let position = document.position_at(offset as u32);
+        let html_document = ls.parse_html_document(&document).await;
+        let actual = ls
+            .do_tag_complete(&document, &position, &html_document)
+            .await;
         assert_eq!(actual, expected);
     }
 
@@ -2730,6 +2821,28 @@ mod tests {
         )
         .await;
     }
+
+    #[tokio::test]
+    async fn do_tag_complete() {
+        test_tag_completion("<div>|", Some("$0</div>".to_string())).await;
+        test_tag_completion("<div>|</div>", None).await;
+        test_tag_completion(r#"<div class="">|"#, Some("$0</div>".to_string())).await;
+        test_tag_completion("<img>|", None).await;
+        test_tag_completion("<div><br></|", Some("div>".to_string())).await;
+        test_tag_completion("<div><br><span></span></|", Some("div>".to_string())).await;
+        test_tag_completion(
+            "<div><h1><br><span></span><img></| </h1></div>",
+            Some("h1>".to_string()),
+        )
+        .await;
+        test_tag_completion(
+            "<ng-template><td><ng-template></|   </td> </ng-template>",
+            Some("ng-template>".to_string()),
+        )
+        .await;
+        test_tag_completion("<div><br></|>", Some("div".to_string())).await;
+    }
+
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
