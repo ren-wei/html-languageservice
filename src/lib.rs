@@ -95,6 +95,15 @@ impl LanguageService {
             .set_completion_participants(completion_participants);
     }
 
+    pub async fn do_quote_complete(
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+        settings: Option<&CompletionConfiguration>,
+    ) -> Option<String> {
+        HTMLCompletion::do_quote_complete(document, position, html_document, settings).await
+    }
+
     pub async fn do_hover(
         &self,
         document: &FullTextDocument,

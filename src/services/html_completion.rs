@@ -308,6 +308,66 @@ impl HTMLCompletion {
 
         result
     }
+
+    pub async fn do_quote_complete(
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+        settings: Option<&CompletionConfiguration>,
+    ) -> Option<String> {
+        let offset = document.offset_at(*position) as usize;
+        if offset == 0 {
+            return None;
+        }
+        if document.get_content(None).get((offset - 1)..offset) != Some("=") {
+            return None;
+        }
+        let default_value = if let Some(settings) = settings {
+            settings.attribute_default_value
+        } else {
+            Quotes::Double
+        };
+        if default_value == Quotes::None {
+            return None;
+        }
+        let value = if default_value == Quotes::Double {
+            r#""$1""#.to_string()
+        } else {
+            "'$1'".to_string()
+        };
+        let node = html_document.find_node_before(offset).await?;
+        let node = node.read().await;
+        if node.start < offset
+            && !node
+                .end_tag_start
+                .is_some_and(|end_tag_start| end_tag_start <= offset)
+        {
+            let mut scanner = Scanner::new(
+                document.get_content(None),
+                node.start,
+                ScannerState::WithinContent,
+                false,
+            );
+            let mut token = scanner.scan();
+            while token != TokenType::EOS && scanner.get_token_end() <= offset {
+                if token == TokenType::AttributeName && scanner.get_token_end() == offset - 1 {
+                    // Ensure the token is a valid standalone attribute name
+                    token = scanner.scan();
+                    if token != TokenType::DelimiterAssign {
+                        return None;
+                    }
+                    token = scanner.scan();
+                    // Any non-attribute valid tag
+                    if token == TokenType::Unknown || token == TokenType::AttributeValue {
+                        return None;
+                    }
+                    return Some(value);
+                }
+                token = scanner.scan();
+            }
+        }
+        None
+    }
 }
 
 struct CompletionContext<'a> {
@@ -1097,6 +1157,25 @@ mod tests {
                 expected.filter_text.unwrap()
             );
         }
+    }
+
+    async fn test_quote_completion(
+        value: &str,
+        expected: Option<String>,
+        options: Option<&CompletionConfiguration>,
+    ) {
+        let offset = value.find('|').unwrap();
+        let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
+
+        let ls_options = Arc::new(LanguageServiceOptions::default());
+        let ls = LanguageService::new(ls_options, None);
+
+        let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
+        let position = document.position_at(offset as u32);
+        let html_document = ls.parse_html_document(&document).await;
+        let actual =
+            HTMLCompletion::do_quote_complete(&document, &position, &html_document, options).await;
+        assert_eq!(actual, expected);
     }
 
     #[tokio::test]
@@ -2614,6 +2693,43 @@ mod tests {
         .await;
     }
 
+    #[tokio::test]
+    async fn do_quote_complete() {
+        test_quote_completion("<a foo=|", Some(r#""$1""#.to_string()), None).await;
+        test_quote_completion(
+            "<a foo=|",
+            Some("'$1'".to_string()),
+            Some(&CompletionConfiguration {
+                attribute_default_value: Quotes::Single,
+                hide_auto_complete_proposals: false,
+                provider: HashMap::new(),
+            }),
+        )
+        .await;
+        test_quote_completion(
+            "<a foo=|",
+            None,
+            Some(&CompletionConfiguration {
+                attribute_default_value: Quotes::None,
+                hide_auto_complete_proposals: false,
+                provider: HashMap::new(),
+            }),
+        )
+        .await;
+        test_quote_completion("<a foo=|=", None, None).await;
+        test_quote_completion(r#"<a foo=|"bar""#, None, None).await;
+        test_quote_completion("<a foo=|></a>", Some(r#""$1""#.to_string()), None).await;
+        test_quote_completion(r#"<a foo="bar=|""#, None, None).await;
+        test_quote_completion(r#"<a baz=| foo="bar">"#, Some(r#""$1""#.to_string()), None).await;
+        test_quote_completion("<a>< foo=| /a>", None, None).await;
+        test_quote_completion("<a></ foo=| a>", None, None).await;
+        test_quote_completion(
+            r#"<a foo="bar" \n baz=| ></a>"#,
+            Some(r#""$1""#.to_string()),
+            None,
+        )
+        .await;
+    }
     #[derive(Default)]
     struct Expected {
         count: Option<usize>,
