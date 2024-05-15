@@ -90,6 +90,12 @@ impl HTMLDataManager {
     }
 }
 
+impl Default for HTMLDataManager {
+    fn default() -> Self {
+        HTMLDataManager::new(true, None)
+    }
+}
+
 lazy_static! {
 static ref PATH_TAG_AND_ATTR: Value = json!({
     // HTML 4

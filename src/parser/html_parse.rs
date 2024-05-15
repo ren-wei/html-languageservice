@@ -247,32 +247,36 @@ impl HTMLDocument {
     }
 }
 
-pub struct HTMLParser {
-    pub data_manager: Arc<RwLock<HTMLDataManager>>,
-}
+pub struct HTMLParser;
 
 impl HTMLParser {
-    pub fn new(data_manager: Arc<RwLock<HTMLDataManager>>) -> HTMLParser {
-        HTMLParser { data_manager }
+    pub async fn parse_document(
+        document: &FullTextDocument,
+        data_manager: &HTMLDataManager,
+    ) -> HTMLDocument {
+        HTMLParser::parse(
+            document.get_content(None),
+            &document.language_id(),
+            data_manager,
+        )
+        .await
     }
 
-    pub async fn parse_document(&self, document: &FullTextDocument) -> HTMLDocument {
-        self.parse(document.get_content(None), &document.language_id())
-            .await
-    }
-
-    pub async fn parse(&self, text: &str, language_id: &str) -> HTMLDocument {
-        parse_html_document(text, language_id, Arc::clone(&self.data_manager)).await
+    pub async fn parse(
+        text: &str,
+        language_id: &str,
+        data_manager: &HTMLDataManager,
+    ) -> HTMLDocument {
+        parse_html_document(text, language_id, &data_manager).await
     }
 }
 
 pub async fn parse_html_document(
     text: &str,
     language_id: &str,
-    data_manager: Arc<RwLock<HTMLDataManager>>,
+    data_manager: &HTMLDataManager,
 ) -> HTMLDocument {
-    let manager = data_manager.read().await;
-    let void_elements = manager.get_void_elements(language_id).await;
+    let void_elements = data_manager.get_void_elements(language_id).await;
     let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent, true);
 
     let html_document = Arc::new(RwLock::new(Node::new(0, text.len(), vec![], Weak::new())));
@@ -303,10 +307,7 @@ pub async fn parse_html_document(
                         let tag = cur.read().await.tag.clone();
                         cur.write().await.start_tag_end = Some(scanner.get_token_end());
                         if tag.is_some()
-                            && data_manager
-                                .read()
-                                .await
-                                .is_void_element(&tag.unwrap(), &void_elements)
+                            && data_manager.is_void_element(&tag.unwrap(), &void_elements)
                         {
                             cur.write().await.closed = true;
                             let parent = cur.read().await.parent.upgrade().unwrap();
@@ -395,8 +396,8 @@ mod tests {
     use super::*;
 
     async fn parse(text: &str) -> HTMLDocument {
-        let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(true, None)));
-        HTMLParser::new(data_manager).parse(text, "html").await
+        let data_manager = HTMLDataManager::new(true, None);
+        HTMLParser::parse(text, "html", &data_manager).await
     }
 
     #[async_recursion]

@@ -5,13 +5,13 @@ pub mod participant;
 pub mod services;
 mod utils;
 
+pub use language_facts::data_manager::HTMLDataManager;
 pub use parser::html_parse::parse_html_document;
 use participant::{ICompletionParticipant, IHoverParticipant};
 use tokio::sync::RwLock;
 
 use std::sync::Arc;
 
-use language_facts::{data_manager::HTMLDataManager, data_provider::IHTMLDataProvider};
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{ClientCapabilities, CompletionList, Hover, Position};
 use parser::html_parse::{HTMLDocument, HTMLParser};
@@ -20,52 +20,27 @@ use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCo
 use services::html_hover::{HTMLHover, HoverSettings};
 
 pub struct LanguageService {
-    data_manager: Arc<RwLock<HTMLDataManager>>,
-    html_parse: HTMLParser,
     html_completion: HTMLCompletion,
     html_hover: HTMLHover,
 }
 
 impl LanguageService {
-    pub fn new(
-        options: Arc<LanguageServiceOptions>,
-        custom_data_providers: Option<Vec<Arc<RwLock<dyn IHTMLDataProvider>>>>,
-    ) -> LanguageService {
-        let use_default_data_provider =
-            if let Some(use_default_data_provider) = options.use_default_data_provider {
-                use_default_data_provider
-            } else {
-                true
-            };
-        let data_manager = Arc::new(RwLock::new(HTMLDataManager::new(
-            use_default_data_provider,
-            custom_data_providers,
-        )));
+    pub fn new(options: LanguageServiceOptions) -> LanguageService {
         LanguageService {
-            data_manager: Arc::clone(&data_manager),
-            html_parse: HTMLParser::new(Arc::clone(&data_manager)),
-            html_completion: HTMLCompletion::new(Arc::clone(&options), Arc::clone(&data_manager)),
-            html_hover: HTMLHover::new(Arc::clone(&options), Arc::clone(&data_manager)),
+            html_completion: HTMLCompletion::new(&options),
+            html_hover: HTMLHover::new(&options),
         }
-    }
-
-    pub async fn set_data_providers(
-        &mut self,
-        built_in: bool,
-        providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
-    ) {
-        self.data_manager
-            .write()
-            .await
-            .set_data_providers(built_in, providers);
     }
 
     pub fn create_scanner(input: &str, initial_offset: usize) -> Scanner {
         Scanner::new(input, initial_offset, ScannerState::WithinContent, false)
     }
 
-    pub async fn parse_html_document(&self, document: &FullTextDocument) -> HTMLDocument {
-        self.html_parse.parse_document(document).await
+    pub async fn parse_html_document(
+        document: &FullTextDocument,
+        data_manager: &HTMLDataManager,
+    ) -> HTMLDocument {
+        HTMLParser::parse_document(document, data_manager).await
     }
 
     pub async fn do_complete(
@@ -75,6 +50,7 @@ impl LanguageService {
         html_document: &HTMLDocument,
         document_context: impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
+        data_manager: &HTMLDataManager,
     ) -> CompletionList {
         self.html_completion
             .do_complete(
@@ -83,6 +59,7 @@ impl LanguageService {
                 html_document,
                 document_context,
                 settings,
+                data_manager,
             )
             .await
     }
@@ -109,9 +86,10 @@ impl LanguageService {
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
+        data_manager: &HTMLDataManager,
     ) -> Option<String> {
         self.html_completion
-            .do_tag_complete(document, position, html_document)
+            .do_tag_complete(document, position, html_document, data_manager)
             .await
     }
 
@@ -121,9 +99,10 @@ impl LanguageService {
         position: &Position,
         html_document: &HTMLDocument,
         options: Option<HoverSettings>,
+        data_manager: &HTMLDataManager,
     ) -> Option<Hover> {
         self.html_hover
-            .do_hover(document, position, html_document, options)
+            .do_hover(document, position, html_document, options, data_manager)
             .await
     }
 

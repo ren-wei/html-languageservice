@@ -24,21 +24,14 @@ use crate::{
 };
 
 pub struct HTMLHover {
-    _ls_options: Arc<LanguageServiceOptions>,
-    data_manager: Arc<RwLock<HTMLDataManager>>,
     supports_markdown: bool,
     hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
 }
 
 impl HTMLHover {
-    pub fn new(
-        ls_options: Arc<LanguageServiceOptions>,
-        data_manager: Arc<RwLock<HTMLDataManager>>,
-    ) -> HTMLHover {
+    pub fn new(ls_options: &LanguageServiceOptions) -> HTMLHover {
         HTMLHover {
-            _ls_options: Arc::clone(&ls_options),
-            data_manager,
-            supports_markdown: does_support_markdown(Arc::clone(&ls_options)),
+            supports_markdown: does_support_markdown(&ls_options),
             hover_participants: vec![],
         }
     }
@@ -56,6 +49,7 @@ impl HTMLHover {
         position: &Position,
         html_document: &HTMLDocument,
         options: Option<HoverSettings>,
+        data_manager: &HTMLDataManager,
     ) -> Option<Hover> {
         let offset = document.offset_at(*position) as usize;
         let node = html_document.find_node_at(offset).await;
@@ -73,7 +67,6 @@ impl HTMLHover {
         let _node = node.unwrap();
         let node = _node.read().await;
 
-        let data_manager = self.data_manager.read().await;
         let mut data_providers = vec![];
         for provider in data_manager.get_data_providers() {
             if provider.read().await.is_applicable(document.language_id()) {
@@ -568,12 +561,12 @@ struct HoverContext<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use lsp_textdocument::FullTextDocument;
     use lsp_types::{HoverContents, MarkupContent, MarkupKind};
 
-    use crate::{LanguageService, LanguageServiceOptions};
+    use crate::{
+        language_facts::data_manager::HTMLDataManager, LanguageService, LanguageServiceOptions,
+    };
 
     use super::HoverSettings;
 
@@ -588,10 +581,11 @@ mod tests {
         let document = FullTextDocument::new("html".to_string(), 0, value);
 
         let position = document.position_at(offset as u32);
-        let ls = LanguageService::new(Arc::new(LanguageServiceOptions::default()), None);
-        let html_document = ls.parse_html_document(&document).await;
+        let ls = LanguageService::new(LanguageServiceOptions::default());
+        let data_manager = HTMLDataManager::default();
+        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
         let hover = ls
-            .do_hover(&document, &position, &html_document, None)
+            .do_hover(&document, &position, &html_document, None, &data_manager)
             .await;
         if let Some(hover) = hover {
             assert_eq!(
@@ -622,14 +616,21 @@ mod tests {
 
         let position = document.position_at(offset as u32);
         let ls = if let Some(ls_options) = ls_options {
-            LanguageService::new(Arc::new(ls_options), None)
+            LanguageService::new(ls_options)
         } else {
-            LanguageService::new(Arc::new(LanguageServiceOptions::default()), None)
+            LanguageService::new(LanguageServiceOptions::default())
         };
 
-        let html_document = ls.parse_html_document(&document).await;
+        let data_manager = HTMLDataManager::default();
+        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
         let hover = ls
-            .do_hover(&document, &position, &html_document, hover_setting)
+            .do_hover(
+                &document,
+                &position,
+                &html_document,
+                hover_setting,
+                &data_manager,
+            )
             .await;
         if let Some(hover) = hover {
             assert_eq!(hover.contents, contents);

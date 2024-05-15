@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use crate::LanguageServiceOptions;
 
-pub fn does_support_markdown(ls_options: Arc<LanguageServiceOptions>) -> bool {
+pub fn does_support_markdown(ls_options: &LanguageServiceOptions) -> bool {
     if let Some(client_capabilities) = &ls_options.client_capabilities {
         if let Some(text_document) = &client_capabilities.text_document {
             if let Some(completion) = &text_document.completion {

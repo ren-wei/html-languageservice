@@ -28,21 +28,14 @@ use crate::{
 };
 
 pub struct HTMLCompletion {
-    _ls_options: Arc<LanguageServiceOptions>,
-    data_manager: Arc<RwLock<HTMLDataManager>>,
     supports_markdown: bool,
     completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
 }
 
 impl HTMLCompletion {
-    pub fn new(
-        ls_options: Arc<LanguageServiceOptions>,
-        data_manager: Arc<RwLock<HTMLDataManager>>,
-    ) -> HTMLCompletion {
+    pub fn new(ls_options: &LanguageServiceOptions) -> HTMLCompletion {
         HTMLCompletion {
-            _ls_options: Arc::clone(&ls_options),
-            data_manager,
-            supports_markdown: does_support_markdown(Arc::clone(&ls_options)),
+            supports_markdown: does_support_markdown(&ls_options),
             completion_participants: vec![],
         }
     }
@@ -61,8 +54,8 @@ impl HTMLCompletion {
         html_document: &HTMLDocument,
         _document_context: impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
+        data_manager: &HTMLDataManager,
     ) -> CompletionList {
-        let data_manager = self.data_manager.read().await;
         let mut result = CompletionList::default();
         let mut data_providers = vec![];
         for provider in data_manager.get_data_providers() {
@@ -106,7 +99,7 @@ impl HTMLCompletion {
             current_attribute_name: String::new(),
             completion_participants: &self.completion_participants,
             position,
-            data_manager: Arc::clone(&self.data_manager),
+            data_manager,
         };
 
         let node = node.read().await;
@@ -374,6 +367,7 @@ impl HTMLCompletion {
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
+        data_manager: &HTMLDataManager,
     ) -> Option<String> {
         let offset = document.offset_at(*position) as usize;
         if offset == 0 {
@@ -381,7 +375,6 @@ impl HTMLCompletion {
         }
         let char = document.get_content(None).as_bytes()[offset - 1];
         if char == b'>' {
-            let data_manager = self.data_manager.read().await;
             let void_elements = data_manager.get_void_elements(document.language_id()).await;
             let node = html_document.find_node_before(offset).await?;
             let node = node.read().await;
@@ -460,7 +453,7 @@ struct CompletionContext<'a> {
     current_attribute_name: String,
     completion_participants: &'a Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
     position: &'a Position,
-    data_manager: Arc<RwLock<HTMLDataManager>>,
+    data_manager: &'a HTMLDataManager,
 }
 
 impl CompletionContext<'_> {
@@ -899,12 +892,7 @@ impl CompletionContext<'_> {
         if self.settings.is_some() && self.settings.unwrap().hide_auto_complete_proposals {
             return;
         }
-        if !self
-            .data_manager
-            .read()
-            .await
-            .is_void_element(tag, &self.void_elements)
-        {
+        if !self.data_manager.is_void_element(tag, &self.void_elements) {
             let pos = self.document.position_at(tag_close_end as u32);
             let text_edit = Some(CompletionTextEdit::Edit(TextEdit {
                 range: Range {
@@ -1105,15 +1093,17 @@ mod tests {
         let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
         let ls_options = if let Some(ls_options) = ls_options {
-            Arc::new(ls_options)
+            ls_options
         } else {
-            Arc::new(LanguageServiceOptions::default())
+            LanguageServiceOptions::default()
         };
-        let ls = LanguageService::new(ls_options, None);
+        let ls = LanguageService::new(ls_options);
 
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
-        let html_document = ls.parse_html_document(&document).await;
+        let html_document =
+            LanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
+                .await;
         let list = ls
             .do_complete(
                 &document,
@@ -1121,6 +1111,7 @@ mod tests {
                 &html_document,
                 DefaultDocumentContext,
                 settings.as_ref(),
+                &HTMLDataManager::default(),
             )
             .await;
 
@@ -1242,12 +1233,11 @@ mod tests {
         let offset = value.find('|').unwrap();
         let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
-        let ls_options = Arc::new(LanguageServiceOptions::default());
-        let ls = LanguageService::new(ls_options, None);
-
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
-        let html_document = ls.parse_html_document(&document).await;
+        let html_document =
+            LanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
+                .await;
         let actual =
             HTMLCompletion::do_quote_complete(&document, &position, &html_document, options).await;
         assert_eq!(actual, expected);
@@ -1257,14 +1247,15 @@ mod tests {
         let offset = value.find('|').unwrap();
         let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
-        let ls_options = Arc::new(LanguageServiceOptions::default());
-        let ls = LanguageService::new(ls_options, None);
+        let ls_options = LanguageServiceOptions::default();
+        let ls = LanguageService::new(ls_options);
 
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
-        let html_document = ls.parse_html_document(&document).await;
+        let data_manager = HTMLDataManager::default();
+        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
         let actual = ls
-            .do_tag_complete(&document, &position, &html_document)
+            .do_tag_complete(&document, &position, &html_document, &data_manager)
             .await;
         assert_eq!(actual, expected);
     }
