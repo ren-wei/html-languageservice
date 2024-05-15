@@ -24,7 +24,7 @@ use crate::{
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, ICompletionParticipant},
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
-    LanguageServiceOptions,
+    HTMLLanguageServiceOptions,
 };
 
 pub struct HTMLCompletion {
@@ -33,7 +33,7 @@ pub struct HTMLCompletion {
 }
 
 impl HTMLCompletion {
-    pub fn new(ls_options: &LanguageServiceOptions) -> HTMLCompletion {
+    pub fn new(ls_options: &HTMLLanguageServiceOptions) -> HTMLCompletion {
         HTMLCompletion {
             supports_markdown: does_support_markdown(&ls_options),
             completion_participants: vec![],
@@ -1079,7 +1079,7 @@ pub enum Quotes {
 mod tests {
     use lsp_types::{MarkupContent, MarkupKind};
 
-    use crate::LanguageService;
+    use crate::HTMLLanguageService;
 
     use super::*;
 
@@ -1087,7 +1087,7 @@ mod tests {
         value: &str,
         expected: Expected,
         settings: Option<CompletionConfiguration>,
-        ls_options: Option<LanguageServiceOptions>,
+        ls_options: Option<HTMLLanguageServiceOptions>,
     ) {
         let offset = value.find('|').unwrap();
         let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
@@ -1095,14 +1095,14 @@ mod tests {
         let ls_options = if let Some(ls_options) = ls_options {
             ls_options
         } else {
-            LanguageServiceOptions::default()
+            HTMLLanguageServiceOptions::default()
         };
-        let ls = LanguageService::new(ls_options);
+        let ls = HTMLLanguageService::new(ls_options);
 
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
         let html_document =
-            LanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
+            HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
                 .await;
         let list = ls
             .do_complete(
@@ -1236,7 +1236,7 @@ mod tests {
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
         let html_document =
-            LanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
+            HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
                 .await;
         let actual =
             HTMLCompletion::do_quote_complete(&document, &position, &html_document, options).await;
@@ -1247,13 +1247,14 @@ mod tests {
         let offset = value.find('|').unwrap();
         let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
-        let ls_options = LanguageServiceOptions::default();
-        let ls = LanguageService::new(ls_options);
+        let ls_options = HTMLLanguageServiceOptions::default();
+        let ls = HTMLLanguageService::new(ls_options);
 
         let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
         let position = document.position_at(offset as u32);
         let data_manager = HTMLDataManager::default();
-        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
+        let html_document =
+            HTMLLanguageService::parse_html_document(&document, &data_manager).await;
         let actual = ls
             .do_tag_complete(&document, &position, &html_document, &data_manager)
             .await;

@@ -1,6 +1,6 @@
-use crate::LanguageServiceOptions;
+use crate::HTMLLanguageServiceOptions;
 
-pub fn does_support_markdown(ls_options: &LanguageServiceOptions) -> bool {
+pub fn does_support_markdown(ls_options: &HTMLLanguageServiceOptions) -> bool {
     if let Some(client_capabilities) = &ls_options.client_capabilities {
         if let Some(text_document) = &client_capabilities.text_document {
             if let Some(completion) = &text_document.completion {

@@ -1,3 +1,37 @@
+//! # HTMLLanguageService
+//!
+//! The basics of an HTML language server.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use html_languageservice::{
+//!     parse_html_document, HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions,
+//! };
+//! use lsp_textdocument::FullTextDocument;
+//! use lsp_types::Position;
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     // prepare
+//!     let document = FullTextDocument::new("html".to_string(), 1, "<div></div>".to_string());
+//!     let position = Position::new(0, 1);
+//!     // hover
+//!     let data_manager = HTMLDataManager::new(true, None);
+//!     let html_document = parse_html_document(
+//!         document.get_content(None),
+//!         document.language_id(),
+//!         &data_manager,
+//!     )
+//!     .await;
+//!     let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
+//!     let result = ls
+//!         .do_hover(&document, &position, &html_document, None, &data_manager)
+//!         .await;
+//!     assert!(result.is_some());
+//! }
+//! ```
+
 pub mod html_data;
 pub mod language_facts;
 pub mod parser;
@@ -19,14 +53,14 @@ use parser::html_scanner::{Scanner, ScannerState};
 use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCompletion};
 use services::html_hover::{HTMLHover, HoverSettings};
 
-pub struct LanguageService {
+pub struct HTMLLanguageService {
     html_completion: HTMLCompletion,
     html_hover: HTMLHover,
 }
 
-impl LanguageService {
-    pub fn new(options: LanguageServiceOptions) -> LanguageService {
-        LanguageService {
+impl HTMLLanguageService {
+    pub fn new(options: HTMLLanguageServiceOptions) -> HTMLLanguageService {
+        HTMLLanguageService {
             html_completion: HTMLCompletion::new(&options),
             html_hover: HTMLHover::new(&options),
         }
@@ -115,7 +149,7 @@ impl LanguageService {
 }
 
 #[derive(Default)]
-pub struct LanguageServiceOptions {
+pub struct HTMLLanguageServiceOptions {
     /**
      * Unless set to false, the default HTML data provider will be used
      * along with the providers from customDataProviders.

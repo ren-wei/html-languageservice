@@ -20,7 +20,7 @@ use crate::{
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, IHoverParticipant},
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
-    LanguageServiceOptions,
+    HTMLLanguageServiceOptions,
 };
 
 pub struct HTMLHover {
@@ -29,7 +29,7 @@ pub struct HTMLHover {
 }
 
 impl HTMLHover {
-    pub fn new(ls_options: &LanguageServiceOptions) -> HTMLHover {
+    pub fn new(ls_options: &HTMLLanguageServiceOptions) -> HTMLHover {
         HTMLHover {
             supports_markdown: does_support_markdown(&ls_options),
             hover_participants: vec![],
@@ -565,7 +565,8 @@ mod tests {
     use lsp_types::{HoverContents, MarkupContent, MarkupKind};
 
     use crate::{
-        language_facts::data_manager::HTMLDataManager, LanguageService, LanguageServiceOptions,
+        language_facts::data_manager::HTMLDataManager, HTMLLanguageService,
+        HTMLLanguageServiceOptions,
     };
 
     use super::HoverSettings;
@@ -581,9 +582,10 @@ mod tests {
         let document = FullTextDocument::new("html".to_string(), 0, value);
 
         let position = document.position_at(offset as u32);
-        let ls = LanguageService::new(LanguageServiceOptions::default());
+        let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
         let data_manager = HTMLDataManager::default();
-        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
+        let html_document =
+            HTMLLanguageService::parse_html_document(&document, &data_manager).await;
         let hover = ls
             .do_hover(&document, &position, &html_document, None, &data_manager)
             .await;
@@ -606,7 +608,7 @@ mod tests {
         value: &str,
         contents: HoverContents,
         range_text: &str,
-        ls_options: Option<LanguageServiceOptions>,
+        ls_options: Option<HTMLLanguageServiceOptions>,
         hover_setting: Option<HoverSettings>,
     ) {
         let offset = value.find('|').unwrap();
@@ -616,13 +618,14 @@ mod tests {
 
         let position = document.position_at(offset as u32);
         let ls = if let Some(ls_options) = ls_options {
-            LanguageService::new(ls_options)
+            HTMLLanguageService::new(ls_options)
         } else {
-            LanguageService::new(LanguageServiceOptions::default())
+            HTMLLanguageService::new(HTMLLanguageServiceOptions::default())
         };
 
         let data_manager = HTMLDataManager::default();
-        let html_document = LanguageService::parse_html_document(&document, &data_manager).await;
+        let html_document =
+            HTMLLanguageService::parse_html_document(&document, &data_manager).await;
         let hover = ls
             .do_hover(
                 &document,
