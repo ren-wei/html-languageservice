@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
-use tokio::sync::RwLock;
 
 use super::{
     data_provider::{HTMLDataProvider, IHTMLDataProvider},
@@ -10,13 +7,13 @@ use super::{
 };
 
 pub struct HTMLDataManager {
-    data_providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
+    data_providers: Vec<Box<dyn IHTMLDataProvider>>,
 }
 
 impl HTMLDataManager {
     pub fn new(
         use_default_data_provider: bool,
-        custom_data_providers: Option<Vec<Arc<RwLock<dyn IHTMLDataProvider>>>>,
+        custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
     ) -> HTMLDataManager {
         let mut data_manager = HTMLDataManager {
             data_providers: vec![],
@@ -31,21 +28,18 @@ impl HTMLDataManager {
     pub fn set_data_providers(
         &mut self,
         built_in: bool,
-        mut providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
+        mut providers: Vec<Box<dyn IHTMLDataProvider>>,
     ) {
         self.data_providers.clear();
         if built_in {
             let data = serde_json::from_str(HTML_DATA).unwrap();
             self.data_providers
-                .push(Arc::new(RwLock::new(HTMLDataProvider::new(
-                    "html5".to_string(),
-                    data,
-                ))));
+                .push(Box::new(HTMLDataProvider::new("html5".to_string(), data)));
         }
         self.data_providers.append(&mut providers);
     }
 
-    pub fn get_data_providers(&self) -> &Vec<Arc<RwLock<dyn IHTMLDataProvider>>> {
+    pub fn get_data_providers(&self) -> &Vec<Box<dyn IHTMLDataProvider>> {
         &self.data_providers
     }
 
@@ -56,10 +50,8 @@ impl HTMLDataManager {
     pub async fn get_void_elements(&self, language_id: &str) -> Vec<String> {
         let mut void_tags: Vec<String> = vec![];
         for provider in &self.data_providers {
-            if provider.read().await.is_applicable(language_id) {
+            if provider.is_applicable(language_id) {
                 provider
-                    .read()
-                    .await
                     .provide_tags()
                     .iter()
                     .filter(|tag| tag.void.is_some_and(|v| v))

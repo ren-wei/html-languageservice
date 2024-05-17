@@ -1,9 +1,6 @@
-use std::sync::Arc;
-
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{Hover, HoverContents, MarkedString, MarkupContent, MarkupKind, Position, Range};
 use regex::Regex;
-use tokio::sync::RwLock;
 
 use crate::{
     language_facts::{
@@ -25,7 +22,7 @@ use crate::{
 
 pub struct HTMLHover {
     supports_markdown: bool,
-    hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
+    hover_participants: Vec<Box<dyn IHoverParticipant>>,
 }
 
 impl HTMLHover {
@@ -36,10 +33,7 @@ impl HTMLHover {
         }
     }
 
-    pub fn set_hover_participants(
-        &mut self,
-        hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
-    ) {
+    pub fn set_hover_participants(&mut self, hover_participants: Vec<Box<dyn IHoverParticipant>>) {
         self.hover_participants = hover_participants;
     }
 
@@ -69,8 +63,8 @@ impl HTMLHover {
 
         let mut data_providers = vec![];
         for provider in data_manager.get_data_providers() {
-            if provider.read().await.is_applicable(document.language_id()) {
-                data_providers.push(Arc::clone(provider));
+            if provider.is_applicable(document.language_id()) {
+                data_providers.push(provider);
             }
         }
 
@@ -166,8 +160,6 @@ impl HTMLHover {
 
         for participant in &self.hover_participants {
             let hover = participant
-                .read()
-                .await
                 .on_html_content(HtmlContentContext {
                     document: FullTextDocument::new(
                         document.language_id().to_string(),
@@ -196,7 +188,7 @@ impl HTMLHover {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for tag in provider.read().await.provide_tags() {
+            for tag in provider.provide_tags() {
                 if tag.name.to_lowercase() == cur_tag.to_lowercase() {
                     let markup_content = generate_documentation(
                         GenerateDocumentationItem {
@@ -240,7 +232,7 @@ impl HTMLHover {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for attr in provider.read().await.provide_attributes(cur_tag) {
+            for attr in provider.provide_attributes(cur_tag) {
                 if cur_attr == attr.name && attr.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -281,8 +273,6 @@ impl HTMLHover {
     ) -> Option<Hover> {
         for hover_participant in &self.hover_participants {
             if let Some(hover) = hover_participant
-                .read()
-                .await
                 .on_html_attribute_value(HtmlAttributeValueContext {
                     document: FullTextDocument::new(
                         context.document.language_id().to_string(),
@@ -302,7 +292,7 @@ impl HTMLHover {
             }
         }
         for provider in &context.data_providers {
-            for attr_value in provider.read().await.provide_values(cur_tag, cur_attr) {
+            for attr_value in provider.provide_values(cur_tag, cur_attr) {
                 if cur_attr_value == attr_value.name && attr_value.description.is_some() {
                     let contents = generate_documentation(
                         GenerateDocumentationItem {
@@ -552,7 +542,7 @@ pub struct HoverSettings {
 
 struct HoverContext<'a> {
     options: HoverSettings,
-    data_providers: Vec<Arc<RwLock<dyn IHTMLDataProvider>>>,
+    data_providers: Vec<&'a Box<dyn IHTMLDataProvider>>,
     offset: usize,
     position: &'a Position,
     document: &'a FullTextDocument,

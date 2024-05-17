@@ -42,9 +42,6 @@ mod utils;
 pub use language_facts::data_manager::HTMLDataManager;
 pub use parser::html_parse::parse_html_document;
 use participant::{ICompletionParticipant, IHoverParticipant};
-use tokio::sync::RwLock;
-
-use std::sync::Arc;
 
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{ClientCapabilities, CompletionList, Hover, Position};
@@ -100,7 +97,7 @@ impl HTMLLanguageService {
 
     pub fn set_completion_participants(
         &mut self,
-        completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
+        completion_participants: Vec<Box<dyn ICompletionParticipant>>,
     ) {
         self.html_completion
             .set_completion_participants(completion_participants);
@@ -140,10 +137,7 @@ impl HTMLLanguageService {
             .await
     }
 
-    pub fn set_hover_participants(
-        &mut self,
-        hover_participants: Vec<Arc<RwLock<dyn IHoverParticipant>>>,
-    ) {
+    pub fn set_hover_participants(&mut self, hover_participants: Vec<Box<dyn IHoverParticipant>>) {
         self.html_hover.set_hover_participants(hover_participants);
     }
 }

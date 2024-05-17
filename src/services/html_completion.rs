@@ -29,7 +29,7 @@ use crate::{
 
 pub struct HTMLCompletion {
     supports_markdown: bool,
-    completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
+    completion_participants: Vec<Box<dyn ICompletionParticipant>>,
 }
 
 impl HTMLCompletion {
@@ -42,7 +42,7 @@ impl HTMLCompletion {
 
     pub fn set_completion_participants(
         &mut self,
-        completion_participants: Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
+        completion_participants: Vec<Box<dyn ICompletionParticipant>>,
     ) {
         self.completion_participants = completion_participants;
     }
@@ -59,12 +59,12 @@ impl HTMLCompletion {
         let mut result = CompletionList::default();
         let mut data_providers = vec![];
         for provider in data_manager.get_data_providers() {
-            if provider.read().await.is_applicable(document.language_id()) {
+            if provider.is_applicable(document.language_id()) {
                 if settings.is_none() {
                     data_providers.push(provider);
                 } else {
                     let s = settings.unwrap();
-                    let v = s.provider.get(provider.read().await.get_id());
+                    let v = s.provider.get(provider.get_id());
                     if v.is_none() || *v.unwrap() {
                         data_providers.push(provider);
                     }
@@ -443,7 +443,7 @@ struct CompletionContext<'a> {
     text: &'a str,
     offset: usize,
     document: &'a FullTextDocument,
-    data_providers: Vec<&'a Arc<RwLock<dyn IHTMLDataProvider>>>,
+    data_providers: Vec<&'a Box<dyn IHTMLDataProvider>>,
     void_elements: Vec<String>,
     settings: Option<&'a CompletionConfiguration>,
     node: Arc<RwLock<Node>>,
@@ -451,7 +451,7 @@ struct CompletionContext<'a> {
     does_support_markdown: bool,
     html_document: &'a HTMLDocument,
     current_attribute_name: String,
-    completion_participants: &'a Vec<Arc<RwLock<dyn ICompletionParticipant>>>,
+    completion_participants: &'a Vec<Box<dyn ICompletionParticipant>>,
     position: &'a Position,
     data_manager: &'a HTMLDataManager,
 }
@@ -497,7 +497,7 @@ impl CompletionContext<'_> {
     ) {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         for provider in &self.data_providers {
-            for tag in provider.read().await.provide_tags() {
+            for tag in provider.provide_tags() {
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -565,11 +565,7 @@ impl CompletionContext<'_> {
         existing_attributes.insert(current_attribute.to_string(), false);
 
         for provider in &self.data_providers {
-            for attr in provider
-                .read()
-                .await
-                .provide_attributes(&self.current_tag.as_ref().unwrap())
-            {
+            for attr in provider.provide_attributes(&self.current_tag.as_ref().unwrap()) {
                 if existing_attributes.get(&attr.name).is_some_and(|v| *v) {
                     continue;
                 }
@@ -730,8 +726,6 @@ impl CompletionContext<'_> {
             for participant in self.completion_participants {
                 self.result.items.append(
                     &mut participant
-                        .read()
-                        .await
                         .on_html_attribute_value(HtmlAttributeValueContext {
                             document: FullTextDocument::new(
                                 self.document.language_id().to_string(),
@@ -751,7 +745,7 @@ impl CompletionContext<'_> {
         }
 
         for provider in &self.data_providers {
-            for value in provider.read().await.provide_values(
+            for value in provider.provide_values(
                 &self.current_tag.clone().unwrap_or_default(),
                 &self.current_attribute_name,
             ) {
@@ -861,7 +855,7 @@ impl CompletionContext<'_> {
         }
 
         for provider in &self.data_providers {
-            for tag in provider.read().await.provide_tags() {
+            for tag in provider.provide_tags() {
                 let documentation = generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
@@ -916,8 +910,6 @@ impl CompletionContext<'_> {
         for participant in self.completion_participants {
             self.result.items.append(
                 &mut participant
-                    .read()
-                    .await
                     .on_html_content(HtmlContentContext {
                         document: FullTextDocument::new(
                             self.document.language_id().to_string(),
