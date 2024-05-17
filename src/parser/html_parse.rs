@@ -27,7 +27,20 @@ pub struct Node {
     pub start_tag_end: Option<usize>,
     /// It's None only when it's closed or it miss part of end tag, it equals start of end tag
     pub end_tag_start: Option<usize>,
-    pub attributes: HashMap<String, Option<String>>,
+    pub attributes: HashMap<String, NodeAttribute>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeAttribute {
+    pub value: Option<String>,
+    /// start offfset of attribute name
+    pub offset: usize,
+}
+
+impl NodeAttribute {
+    pub fn new(value: Option<String>, offset: usize) -> NodeAttribute {
+        NodeAttribute { value, offset }
+    }
 }
 
 impl Node {
@@ -362,15 +375,19 @@ pub async fn parse_html_document(
             TokenType::AttributeName => {
                 let text = scanner.get_token_text();
                 pending_attribute = Some(text.to_string());
-                cur.write().await.attributes.insert(text.to_string(), None); // Support valueless attributes such as 'checked'
+                cur.write().await.attributes.insert(
+                    text.to_string(),
+                    NodeAttribute::new(None, scanner.get_token_offset()),
+                ); // Support valueless attributes such as 'checked'
             }
             TokenType::AttributeValue => {
                 let text = scanner.get_token_text();
                 if let Some(attr) = pending_attribute {
+                    let offset = scanner.get_token_offset() - 1 - attr.len();
                     cur.write()
                         .await
                         .attributes
-                        .insert(attr, Some(text.to_string()));
+                        .insert(attr, NodeAttribute::new(Some(text.to_string()), offset));
                     pending_attribute = None;
                 }
             }
@@ -868,15 +885,18 @@ mod tests {
                 attributes: HashMap::from([
                     (
                         "class".to_string(),
-                        Some(r#""these are my-classes""#.to_string()),
+                        NodeAttribute::new(Some(r#""these are my-classes""#.to_string()), 5),
                     ),
-                    ("id".to_string(), Some(r#""test""#.to_string())),
+                    (
+                        "id".to_string(),
+                        NodeAttribute::new(Some(r#""test""#.to_string()), 34),
+                    ),
                 ]),
                 children: vec![NodeJSONWithAttributes {
                     tag: "span".to_string(),
                     attributes: HashMap::from([(
                         "aria-describedby".to_string(),
-                        Some(r#""test""#.to_string()),
+                        NodeAttribute::new(Some(r#""test""#.to_string()), 50),
                     )]),
                     children: vec![],
                 }],
@@ -893,8 +913,11 @@ mod tests {
             vec![NodeJSONWithAttributes {
                 tag: "div".to_string(),
                 attributes: HashMap::from([
-                    ("checked".to_string(), None),
-                    ("id".to_string(), Some(r#""test""#.to_string())),
+                    ("checked".to_string(), NodeAttribute::new(None, 5)),
+                    (
+                        "id".to_string(),
+                        NodeAttribute::new(Some(r#""test""#.to_string()), 13),
+                    ),
                 ]),
                 children: vec![],
             }],
@@ -915,7 +938,7 @@ mod tests {
     #[derive(PartialEq, Debug)]
     struct NodeJSONWithAttributes {
         tag: String,
-        attributes: HashMap<String, Option<String>>,
+        attributes: HashMap<String, NodeAttribute>,
         children: Vec<NodeJSONWithAttributes>,
     }
 }
