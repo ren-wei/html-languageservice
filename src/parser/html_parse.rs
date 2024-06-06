@@ -25,13 +25,14 @@ pub struct Node {
     pub closed: bool,
     /// It's None only when new, it larger than end of start tag
     pub start_tag_end: Option<usize>,
-    /// It's None only when it's closed or it miss part of end tag, it equals start of end tag
+    /// It's None only when it's self-closing tag or it miss part of end tag, it equals start of end tag
     pub end_tag_start: Option<usize>,
     pub attributes: HashMap<String, NodeAttribute>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeAttribute {
+    /// include quote
     pub value: Option<String>,
     /// start offfset of attribute name
     pub offset: usize,
@@ -65,6 +66,20 @@ impl Node {
 
     pub fn attribute_names(&self) -> Vec<&String> {
         self.attributes.keys().collect()
+    }
+
+    pub fn attribute_names_by_order(&self) -> Vec<&String> {
+        let mut attributes = self.attribute_names();
+        attributes.sort_by(|a, b| {
+            let a = self.attributes.get(*a).unwrap().offset;
+            let b = self.attributes.get(*b).unwrap().offset;
+            a.cmp(&b)
+        });
+        attributes
+    }
+
+    pub fn is_self_closing(&self) -> bool {
+        self.end_tag_start.is_none()
     }
 
     pub fn is_same_tag(&self, tag_in_lowercase: Option<&str>) -> bool {

@@ -39,14 +39,13 @@ impl Scanner<'_> {
     }
 
     pub fn scan(&mut self) -> TokenType {
-        let offset = self.stream.pos().clone();
+        let offset = self.stream.pos();
         let old_state = &self.state.clone();
         self.internal_scan();
         if self.token_type != TokenType::EOS
             && offset == self.stream.pos()
             && !(self.emit_pseudo_close_tags
-                && (self.token_type == TokenType::StartTagClose
-                    || self.token_type == TokenType::EndTagClose))
+                && [TokenType::StartTagClose, TokenType::EndTagClose].contains(&self.token_type))
         {
             eprintln!(
                 "Scanner.scan has not advanced at offset {}, state before: {:?} after: {:?}",
@@ -342,7 +341,7 @@ impl Scanner<'_> {
 
             ScannerState::WithinScriptContent => {
                 // see http://stackoverflow.com/questions/14574471/how-do-browsers-parse-a-script-tag-exactly
-                let mut script_state = 1;
+                let mut script_state: u8 = 1;
                 while !self.stream.eos() {
                     let m = self
                         .stream

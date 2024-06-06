@@ -32,6 +32,7 @@
 //! }
 //! ```
 
+mod beautify;
 pub mod html_data;
 pub mod language_facts;
 pub mod parser;
@@ -44,10 +45,11 @@ pub use parser::html_parse::parse_html_document;
 use participant::{ICompletionParticipant, IHoverParticipant};
 
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{ClientCapabilities, CompletionList, Hover, Position};
+use lsp_types::{ClientCapabilities, CompletionList, Hover, Position, Range, TextEdit};
 use parser::html_parse::{HTMLDocument, HTMLParser};
 use parser::html_scanner::{Scanner, ScannerState};
 use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCompletion};
+use services::html_formatter::{format, HTMLFormatConfiguration};
 use services::html_hover::{HTMLHover, HoverSettings};
 
 pub struct HTMLLanguageService {
@@ -139,6 +141,14 @@ impl HTMLLanguageService {
 
     pub fn set_hover_participants(&mut self, hover_participants: Vec<Box<dyn IHoverParticipant>>) {
         self.html_hover.set_hover_participants(hover_participants);
+    }
+
+    pub async fn format(
+        document: &FullTextDocument,
+        range: Option<Range>,
+        options: &HTMLFormatConfiguration,
+    ) -> Vec<TextEdit> {
+        format(document, &range, options).await
     }
 }
 
