@@ -9,7 +9,7 @@ The basics of an HTML language server.
 - [x] scanner
 - [x] complete
 - [x] hover
-- [ ] format
+- [x] format
 - [ ] findDocumentHighlights
 - [ ] findDocumentLinks
 - [ ] findDocumentSymbols
