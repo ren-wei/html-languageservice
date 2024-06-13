@@ -308,3 +308,25 @@ async fn end_with_newline() {
     };
     format(&unformatted, &expected, &options).await;
 }
+
+#[tokio::test]
+async fn range() {
+    let unformatted = [
+        r#"<div  class = "foo">"#,
+        r#"  |<img  src = "foo">|"#,
+        r#" </div>"#,
+    ]
+    .join("\n");
+    let expected = [
+        r#"<div  class = "foo">"#,
+        r#"  <img src="foo" />"#,
+        r#" </div>"#,
+    ]
+    .join("\n");
+    let options = HTMLFormatConfiguration {
+        tab_size: 2,
+        end_with_newline: true,
+        ..Default::default()
+    };
+    format(&unformatted, &expected, &options).await;
+}

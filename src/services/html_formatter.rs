@@ -38,10 +38,25 @@ pub async fn format(
         if extended_end == value.len() || is_eol(value, extended_end) {
             end_offset = extended_end;
         }
-        let range = Range::new(
-            document.position_at(start_offset as u32),
-            document.position_at(end_offset as u32),
-        );
+        let range = if document
+            .get_content(None)
+            .get(start_offset - 1..start_offset)
+            .is_some_and(|v| v == "\n")
+        {
+            let start = document.position_at(start_offset as u32);
+            Range::new(
+                Position {
+                    line: start.line + 1,
+                    character: 0,
+                },
+                document.position_at(end_offset as u32),
+            )
+        } else {
+            Range::new(
+                document.position_at(start_offset as u32),
+                document.position_at(end_offset as u32),
+            )
+        };
 
         // Do not modify if substring starts in inside an element
         // Ending inside an element is fine as it doesn't cause formatting errors
@@ -76,7 +91,18 @@ pub async fn format(
         } else {
             "\t".repeat(initial_indent_level)
         };
-        result = result.split("\n").collect::<Vec<_>>().join(&indent);
+        if result.ends_with('\n') {
+            result = result[..result.len() - 1]
+                .split("\n")
+                .collect::<Vec<_>>()
+                .join(&format!("\n{}", &indent));
+            result += "\n";
+        } else {
+            result = result
+                .split("\n")
+                .collect::<Vec<_>>()
+                .join(&format!("\n{}", &indent));
+        }
         if range.start.character == 0 {
             result = indent + &result;
         }
@@ -94,12 +120,13 @@ fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfig
     let mut n_chars = 0;
     let tab_size = options.tab_size as usize;
     let length = content.len();
-    let mut content = content.chars();
+    let mut content = content.bytes();
+    content.nth(i - 1);
     while i < length {
-        let ch = content.nth(i).unwrap();
-        if ch == ' ' {
+        let ch = content.next().unwrap();
+        if ch == b' ' {
             n_chars += 1;
-        } else if ch == '\t' {
+        } else if ch == b'\t' {
             n_chars += tab_size;
         } else {
             break;
@@ -110,13 +137,13 @@ fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfig
 }
 
 fn is_eol(text: &str, offset: usize) -> bool {
-    text.chars().nth(offset).is_some_and(|c| c == '\n')
+    text.bytes().nth(offset).is_some_and(|c| c == b'\n')
 }
 
 fn is_whitespace(text: &str, offset: usize) -> bool {
-    text.chars()
+    text.bytes()
         .nth(offset)
-        .is_some_and(|c| vec![' ', '\t'].contains(&c))
+        .is_some_and(|c| vec![b' ', b'\t'].contains(&c))
 }
 
 pub struct HTMLFormatConfiguration {
