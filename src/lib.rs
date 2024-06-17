@@ -143,6 +143,7 @@ impl HTMLLanguageService {
         self.html_hover.set_hover_participants(hover_participants);
     }
 
+    /// Note: `format` is not prefect, it's under development
     pub async fn format(
         document: &FullTextDocument,
         range: Option<Range>,
