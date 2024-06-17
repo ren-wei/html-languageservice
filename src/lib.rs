@@ -45,11 +45,14 @@ pub use parser::html_parse::parse_html_document;
 use participant::{ICompletionParticipant, IHoverParticipant};
 
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{ClientCapabilities, CompletionList, Hover, Position, Range, TextEdit};
+use lsp_types::{
+    ClientCapabilities, CompletionList, DocumentHighlight, Hover, Position, Range, TextEdit,
+};
 use parser::html_parse::{HTMLDocument, HTMLParser};
 use parser::html_scanner::{Scanner, ScannerState};
 use services::html_completion::{CompletionConfiguration, DocumentContext, HTMLCompletion};
 use services::html_formatter::{format, HTMLFormatConfiguration};
+use services::html_highlight::find_document_highlights;
 use services::html_hover::{HTMLHover, HoverSettings};
 
 pub struct HTMLLanguageService {
@@ -150,6 +153,14 @@ impl HTMLLanguageService {
         options: &HTMLFormatConfiguration,
     ) -> Vec<TextEdit> {
         format(document, &range, options).await
+    }
+
+    pub async fn find_document_highlights(
+        document: &FullTextDocument,
+        position: &Position,
+        html_document: &HTMLDocument,
+    ) -> Vec<DocumentHighlight> {
+        find_document_highlights(document, position, html_document).await
     }
 }
 
