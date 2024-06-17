@@ -2,6 +2,8 @@
 //!
 //! The basics of an HTML language server.
 //!
+//! [HTMLLanguageService]
+//!
 //! # Examples
 //!
 //! ```rust
