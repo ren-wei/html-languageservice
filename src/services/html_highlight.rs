@@ -12,39 +12,42 @@ pub async fn find_document_highlights(
     html_document: &HTMLDocument,
 ) -> Vec<DocumentHighlight> {
     let offset = document.offset_at(*position);
-    let node = html_document.find_node_at(offset as usize).await.unwrap();
-    let node = node.read().await;
+    if let Some(node) = html_document.find_node_at(offset as usize).await {
+        let node = node.read().await;
 
-    if node.tag.is_none() {
-        return vec![];
-    }
+        if node.tag.is_none() {
+            return vec![];
+        }
 
-    let mut result = vec![];
-    let start_tag_range = get_tag_name_range(TokenType::StartTag, document, node.start);
-    let end_tag_range = if node.is_self_closing() {
-        None
+        let mut result = vec![];
+        let start_tag_range = get_tag_name_range(TokenType::StartTag, document, node.start);
+        let end_tag_range = if node.is_self_closing() {
+            None
+        } else {
+            get_tag_name_range(TokenType::EndTag, document, node.end_tag_start.unwrap())
+        };
+
+        if start_tag_range.is_some_and(|range| covers(&range, position))
+            || end_tag_range.is_some_and(|range| covers(&range, position))
+        {
+            if let Some(range) = start_tag_range {
+                result.push(DocumentHighlight {
+                    range,
+                    kind: Some(DocumentHighlightKind::READ),
+                });
+            }
+            if let Some(range) = end_tag_range {
+                result.push(DocumentHighlight {
+                    range,
+                    kind: Some(DocumentHighlightKind::READ),
+                });
+            }
+        }
+
+        result
     } else {
-        get_tag_name_range(TokenType::EndTag, document, node.end_tag_start.unwrap())
-    };
-
-    if start_tag_range.is_some_and(|range| covers(&range, position))
-        || end_tag_range.is_some_and(|range| covers(&range, position))
-    {
-        if let Some(range) = start_tag_range {
-            result.push(DocumentHighlight {
-                range,
-                kind: Some(DocumentHighlightKind::READ),
-            });
-        }
-        if let Some(range) = end_tag_range {
-            result.push(DocumentHighlight {
-                range,
-                kind: Some(DocumentHighlightKind::READ),
-            });
-        }
+        vec![]
     }
-
-    result
 }
 
 fn is_before_or_equal(pos1: &Position, pos2: &Position) -> bool {
