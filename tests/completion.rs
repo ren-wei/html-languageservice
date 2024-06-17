@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use html_languageservice::{
-    services::html_completion::*, HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions,
+    CompletionConfiguration, DefaultDocumentContext, HTMLDataManager, HTMLLanguageService,
+    HTMLLanguageServiceOptions, Quotes,
 };
 use lsp_textdocument::FullTextDocument;
 use lsp_types::*;
@@ -161,7 +162,7 @@ async fn test_quote_completion(
         HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
             .await;
     let actual =
-        HTMLCompletion::do_quote_complete(&document, &position, &html_document, options).await;
+        HTMLLanguageService::do_quote_complete(&document, &position, &html_document, options).await;
     assert_eq!(actual, expected);
 }
 

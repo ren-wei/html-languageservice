@@ -2,8 +2,8 @@ use lsp_textdocument::FullTextDocument;
 use lsp_types::{HoverContents, MarkupContent, MarkupKind};
 
 use html_languageservice::{
-    language_facts::data_manager::HTMLDataManager, services::html_hover::HoverSettings,
-    HTMLLanguageService, HTMLLanguageServiceOptions,
+    language_facts::data_manager::HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions,
+    HoverSettings,
 };
 
 async fn assert_hover(

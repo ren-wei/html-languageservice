@@ -1,4 +1,4 @@
-use html_languageservice::{services::html_formatter::*, HTMLLanguageService};
+use html_languageservice::{HTMLFormatConfiguration, HTMLLanguageService};
 use lsp_textdocument::FullTextDocument;
 use lsp_types::*;
 
