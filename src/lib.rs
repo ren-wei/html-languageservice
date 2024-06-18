@@ -7,9 +7,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use html_languageservice::{
-//!     parse_html_document, HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions,
-//! };
+//! use html_languageservice::{HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions};
 //! use lsp_textdocument::FullTextDocument;
 //! use lsp_types::Position;
 //!
@@ -20,12 +18,7 @@
 //!     let position = Position::new(0, 1);
 //!     // hover
 //!     let data_manager = HTMLDataManager::new(true, None);
-//!     let html_document = parse_html_document(
-//!         document.get_content(None),
-//!         document.language_id(),
-//!         &data_manager,
-//!     )
-//!     .await;
+//!     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager).await;
 //!     let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
 //!     let result = ls
 //!         .do_hover(&document, &position, &html_document, None, &data_manager)
