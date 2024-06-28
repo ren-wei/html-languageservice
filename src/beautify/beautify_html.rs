@@ -5,7 +5,7 @@ use regex::Regex;
 use tokio::sync::RwLock;
 
 use crate::{
-    parse_html_document, parser::html_parse::Node,
+    parse_html_document, parser::html_document::Node,
     services::html_formatter::HTMLFormatConfiguration, HTMLDataManager,
 };
 
