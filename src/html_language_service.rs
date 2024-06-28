@@ -6,11 +6,14 @@ use crate::services::html_completion::HTMLCompletion;
 use crate::services::html_formatter::format;
 use crate::services::html_highlight::find_document_highlights;
 use crate::services::html_hover::HTMLHover;
+use crate::services::html_links::find_document_links;
 use crate::{
     CompletionConfiguration, DocumentContext, HTMLDataManager, HTMLFormatConfiguration,
     HoverSettings,
 };
-use lsp_types::{CompletionList, DocumentHighlight, Hover, Position, Range, TextEdit};
+use lsp_types::{
+    CompletionList, DocumentHighlight, DocumentLink, Hover, Position, Range, TextEdit, Url,
+};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -120,5 +123,14 @@ impl HTMLLanguageService {
         html_document: &HTMLDocument,
     ) -> Vec<DocumentHighlight> {
         find_document_highlights(document, position, html_document).await
+    }
+
+    pub fn find_document_links(
+        uri: &Url,
+        document: &FullTextDocument,
+        document_context: &impl DocumentContext,
+        data_manager: &HTMLDataManager,
+    ) -> Vec<DocumentLink> {
+        find_document_links(uri, document, document_context, data_manager)
     }
 }
