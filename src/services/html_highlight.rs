@@ -2,7 +2,7 @@ use lsp_textdocument::FullTextDocument;
 use lsp_types::{DocumentHighlight, DocumentHighlightKind, Position, Range};
 
 use crate::parser::{
-    html_parse::HTMLDocument,
+    html_document::HTMLDocument,
     html_scanner::{Scanner, ScannerState, TokenType},
 };
 

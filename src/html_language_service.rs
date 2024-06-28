@@ -1,5 +1,6 @@
 use crate::html_language_types::HTMLLanguageServiceOptions;
-use crate::parser::html_parse::{HTMLDocument, HTMLParser};
+use crate::parser::html_document::HTMLDocument;
+use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;

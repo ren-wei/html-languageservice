@@ -11,8 +11,8 @@ use crate::{
         },
     },
     parser::{
+        html_document::HTMLDocument,
         html_entities::get_entities,
-        html_parse::HTMLDocument,
         html_scanner::{Scanner, ScannerState, TokenType},
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, IHoverParticipant},

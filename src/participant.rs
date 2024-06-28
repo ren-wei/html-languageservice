@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{CompletionItem, Hover, Position, Range};
 
-use crate::parser::html_parse::HTMLDocument;
+use crate::parser::html_document::HTMLDocument;
 
 #[async_trait]
 pub trait ICompletionParticipant: Send + Sync {
