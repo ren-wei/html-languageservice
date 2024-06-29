@@ -1,21 +1,14 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Weak},
-};
-
-use async_recursion::async_recursion;
-use tokio::sync::RwLock;
+use std::collections::HashMap;
 
 use super::html_scanner::TokenType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     /// It's None only when new
     pub tag: Option<String>,
     pub start: usize,
     pub end: usize,
-    pub children: Vec<Arc<RwLock<Node>>>,
-    pub parent: Weak<RwLock<Node>>,
+    pub children: Vec<Node>,
     /// Whether part of end tag exists
     pub closed: bool,
     /// It's None only when new, it larger than end of start tag
@@ -40,18 +33,12 @@ impl NodeAttribute {
 }
 
 impl Node {
-    pub fn new(
-        start: usize,
-        end: usize,
-        children: Vec<Arc<RwLock<Node>>>,
-        parent: Weak<RwLock<Node>>,
-    ) -> Node {
+    pub fn new(start: usize, end: usize, children: Vec<Node>) -> Node {
         Node {
             tag: None,
             start,
             end,
             children,
-            parent,
             closed: false,
             start_tag_end: None,
             end_tag_start: None,
@@ -88,69 +75,62 @@ impl Node {
         }
     }
 
-    pub fn first_child(&self) -> Option<Arc<RwLock<Node>>> {
-        Some(Arc::clone(self.children.first()?))
+    pub fn first_child(&self) -> Option<&Node> {
+        Some(self.children.first()?)
     }
 
-    pub fn last_child(&self) -> Option<Arc<RwLock<Node>>> {
-        Some(Arc::clone(self.children.last()?))
+    pub fn last_child(&self) -> Option<&Node> {
+        Some(self.children.last()?)
     }
 
-    #[async_recursion]
-    pub async fn find_node_before(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
-        let raw_node = node;
-        let node = raw_node.read().await;
+    pub fn find_node_before<'a>(
+        node: &'a Node,
+        offset: usize,
+        parent_list: &mut Vec<&'a Node>,
+    ) -> &'a Node {
         let mut idx = node.children.len();
         for (i, child) in node.children.iter().enumerate() {
-            if offset <= child.read().await.start {
+            if offset <= child.start {
                 idx = i;
                 break;
             }
         }
         if idx > 0 {
-            let raw_child = Arc::clone(&node.children[idx - 1]);
-            let child = raw_child.read().await;
+            let child = &node.children[idx - 1];
             if offset > child.start {
                 if offset < child.end {
-                    drop(child);
-                    return Node::find_node_before(raw_child, offset).await;
+                    parent_list.push(&node);
+                    return Node::find_node_before(child, offset, parent_list);
                 }
                 if let Some(last_child) = child.last_child() {
-                    if last_child.read().await.end == child.end {
-                        drop(child);
-                        return Node::find_node_before(raw_child, offset).await;
+                    if last_child.end == child.end {
+                        parent_list.push(&node);
+                        return Node::find_node_before(child, offset, parent_list);
                     }
                 }
-                drop(child);
-                return raw_child;
+                parent_list.push(&node);
+                return child;
             }
         }
-        drop(node);
-        raw_node
+        node
     }
 
-    #[async_recursion]
-    pub async fn find_node_at(node: Arc<RwLock<Node>>, offset: usize) -> Arc<RwLock<Node>> {
-        let raw_node = node;
-        let node = raw_node.read().await;
+    pub fn find_node_at<'a>(node: &'a Node, offset: usize) -> &'a Node {
         let mut idx = node.children.len();
         for (i, child) in node.children.iter().enumerate() {
-            if offset < child.read().await.start {
+            if offset < child.start {
                 idx = i;
                 break;
             }
         }
 
         if idx > 0 {
-            let raw_child = Arc::clone(&node.children[idx - 1]);
-            let child = raw_child.read().await;
+            let child = &node.children[idx - 1];
             if offset >= child.start && offset < child.end {
-                drop(child);
-                return Node::find_node_at(raw_child, offset).await;
+                return Node::find_node_at(child, offset);
             }
         }
-        drop(node);
-        raw_node
+        node
     }
 
     /// Find TokenType in node at offset
@@ -159,8 +139,7 @@ impl Node {
     ///
     /// if offset in children, then it's Content
     /// if offset outside of node then it's Unknown
-    pub async fn find_token_type_in_node(node: Arc<RwLock<Node>>, offset: usize) -> TokenType {
-        let node = node.read().await;
+    pub fn find_token_type_in_node(node: &Node, offset: usize) -> TokenType {
         if node.start > offset || node.end <= offset {
             return TokenType::Unknown;
         }
@@ -205,65 +184,62 @@ impl Node {
 
 #[derive(Clone)]
 pub struct HTMLDocument {
-    pub roots: Vec<Arc<RwLock<Node>>>,
+    pub roots: Vec<Node>,
 }
 
 impl HTMLDocument {
-    #[async_recursion]
-    pub async fn find_node_before(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+    /// `parent_list` is a list where the previous node is the parent node of the latter node
+    pub fn find_node_before<'a>(
+        &'a self,
+        offset: usize,
+        parent_list: &mut Vec<&'a Node>,
+    ) -> Option<&'a Node> {
         let mut idx = self.roots.len();
         for (i, child) in self.roots.iter().enumerate() {
-            if offset <= child.read().await.start {
+            if offset <= child.start {
                 idx = i;
                 break;
             }
         }
         if idx > 0 {
-            let raw_child = Arc::clone(&self.roots[idx - 1]);
-            let child = raw_child.read().await;
+            let child = &self.roots[idx - 1];
             if offset > child.start {
                 if offset < child.end {
-                    drop(child);
-                    return Some(Node::find_node_before(raw_child, offset).await);
+                    return Some(Node::find_node_before(child, offset, parent_list));
                 }
                 if let Some(last_child) = child.last_child() {
-                    if last_child.read().await.end == child.end {
-                        drop(child);
-                        return Some(Node::find_node_before(raw_child, offset).await);
+                    if last_child.end == child.end {
+                        return Some(Node::find_node_before(child, offset, parent_list));
                     }
                 }
-                drop(child);
-                return Some(raw_child);
+                return Some(child);
             }
         }
         None
     }
 
-    #[async_recursion]
-    pub async fn find_node_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+    pub fn find_node_at<'a>(&'a self, offset: usize) -> Option<&'a Node> {
         let mut idx = self.roots.len();
         for (i, child) in self.roots.iter().enumerate() {
-            if offset < child.read().await.start {
+            if offset < child.start {
                 idx = i;
                 break;
             }
         }
 
         if idx > 0 {
-            let raw_child = Arc::clone(&self.roots[idx - 1]);
-            let child = raw_child.read().await;
+            let child = &self.roots[idx - 1];
             if offset >= child.start && offset < child.end {
-                drop(child);
-                return Some(Node::find_node_at(raw_child, offset).await);
+                return Some(Node::find_node_at(child, offset));
             }
         }
         None
     }
 
-    pub async fn find_root_at(&self, offset: usize) -> Option<Arc<RwLock<Node>>> {
+    pub fn find_root_at(&self, offset: usize) -> Option<&Node> {
         for root in &self.roots {
-            if offset <= root.read().await.end {
-                return Some(Arc::clone(root));
+            if offset <= root.end {
+                return Some(root);
             }
         }
         None

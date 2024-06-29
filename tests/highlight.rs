@@ -9,7 +9,7 @@ async fn assert_highlights(value: &str, expected_matches: &[usize], element_name
 
     let position = document.position_at(offset as u32);
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager).await;
+    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
 
     let hightlights =
         HTMLLanguageService::find_document_highlights(&document, &position, &html_document).await;

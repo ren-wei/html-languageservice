@@ -1,24 +1,27 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use async_recursion::async_recursion;
 use html_languageservice::{
-    parser::{html_parse::*, html_scanner::TokenType},
+    parser::{
+        html_document::{HTMLDocument, Node, NodeAttribute},
+        html_parse::*,
+        html_scanner::TokenType,
+    },
     HTMLDataManager,
 };
-use tokio::sync::RwLock;
 
 async fn parse(text: &str) -> HTMLDocument {
     let data_manager = HTMLDataManager::new(true, None);
-    HTMLParser::parse(text, "html", &data_manager).await
+    HTMLParser::parse(text, "html", &data_manager)
 }
 
 #[async_recursion]
-async fn to_json(node: Arc<RwLock<Node>>) -> NodeJSON {
+async fn to_json(node: &Node) -> NodeJSON {
     let raw_node = node;
-    let node = raw_node.read().await;
+    let node = raw_node;
     let mut children = vec![];
     for child in &node.children {
-        children.push(to_json(child.to_owned()).await);
+        children.push(to_json(child).await);
     }
     NodeJSON {
         tag: node.tag.clone().unwrap_or_default(),
@@ -31,11 +34,10 @@ async fn to_json(node: Arc<RwLock<Node>>) -> NodeJSON {
 }
 
 #[async_recursion]
-async fn to_json_with_attributes(node: Arc<RwLock<Node>>) -> NodeJSONWithAttributes {
-    let node = node.read().await;
+async fn to_json_with_attributes(node: &Node) -> NodeJSONWithAttributes {
     let mut children = vec![];
     for child in &node.children {
-        children.push(to_json_with_attributes(child.to_owned()).await)
+        children.push(to_json_with_attributes(child).await)
     }
     NodeJSONWithAttributes {
         tag: node.tag.clone().unwrap_or_default(),
@@ -47,20 +49,17 @@ async fn to_json_with_attributes(node: Arc<RwLock<Node>>) -> NodeJSONWithAttribu
 async fn assert_document(input: &str, expected: Vec<NodeJSON>) {
     let document = parse(input).await;
     let mut nodes = vec![];
-    for root in document.roots {
-        nodes.push(to_json(root.to_owned()).await)
+    for root in &document.roots {
+        nodes.push(to_json(root).await)
     }
     assert_eq!(nodes, expected)
 }
 
 async fn assert_node_before(input: &str, offset: usize, expected_tag: Option<&str>) {
     let document = parse(input).await;
-    let node = document.find_node_before(offset).await;
+    let node = document.find_node_before(offset, &mut vec![]);
     if let Some(node) = node {
-        assert_eq!(
-            node.read().await.tag,
-            Some(expected_tag.unwrap_or_default().to_string())
-        );
+        assert_eq!(node.tag, Some(expected_tag.unwrap_or_default().to_string()));
     } else {
         assert_eq!(None, expected_tag);
     }
@@ -72,11 +71,11 @@ async fn assert_find_token_type_in_node(
     expected_token_type: TokenType,
 ) {
     let document = parse(input).await;
-    let node = document.find_node_at(offset).await;
+    let node = document.find_node_at(offset);
     println!("{:#?}", node);
     if let Some(node) = node {
         assert_eq!(
-            Node::find_token_type_in_node(node, offset).await,
+            Node::find_token_type_in_node(node, offset),
             expected_token_type
         );
     } else {
@@ -87,8 +86,8 @@ async fn assert_find_token_type_in_node(
 async fn assert_attributes(input: &str, expected: Vec<NodeJSONWithAttributes>) {
     let document = parse(input).await;
     let mut nodes = vec![];
-    for root in document.roots {
-        nodes.push(to_json_with_attributes(root.to_owned()).await);
+    for root in &document.roots {
+        nodes.push(to_json_with_attributes(root).await);
     }
     assert_eq!(nodes, expected);
 }

@@ -26,8 +26,7 @@ async fn test_completion_for(
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
     let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
-            .await;
+        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
     let list = ls
         .do_complete(
             &document,
@@ -159,8 +158,7 @@ async fn test_quote_completion(
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
     let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None))
-            .await;
+        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
     let actual =
         HTMLLanguageService::do_quote_complete(&document, &position, &html_document, options).await;
     assert_eq!(actual, expected);
@@ -176,7 +174,7 @@ async fn test_tag_completion(value: &str, expected: Option<String>) {
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager).await;
+    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
     let actual = ls
         .do_tag_complete(&document, &position, &html_document, &data_manager)
         .await;

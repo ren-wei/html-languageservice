@@ -47,7 +47,7 @@ impl HTMLDataManager {
         void_elements.contains(&e.to_string())
     }
 
-    pub async fn get_void_elements(&self, language_id: &str) -> Vec<String> {
+    pub fn get_void_elements(&self, language_id: &str) -> Vec<String> {
         let mut void_tags: Vec<String> = vec![];
         for provider in &self.data_providers {
             if provider.is_applicable(language_id) {

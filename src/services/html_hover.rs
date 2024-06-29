@@ -46,20 +46,19 @@ impl HTMLHover {
         data_manager: &HTMLDataManager,
     ) -> Option<Hover> {
         let offset = document.offset_at(*position) as usize;
-        let node = html_document.find_node_at(offset).await;
+        let node = html_document.find_node_at(offset);
         let text = document.get_content(None);
 
         if node.is_none() {
             return None;
         }
         if let Some(node) = &node {
-            if node.read().await.tag.is_none() {
+            if node.tag.is_none() {
                 return None;
             }
         }
 
-        let _node = node.unwrap();
-        let node = _node.read().await;
+        let node = node.unwrap();
 
         let mut data_providers = vec![];
         for provider in data_manager.get_data_providers() {

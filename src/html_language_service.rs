@@ -35,11 +35,11 @@ impl HTMLLanguageService {
         Scanner::new(input, initial_offset, ScannerState::WithinContent, false)
     }
 
-    pub async fn parse_html_document(
+    pub fn parse_html_document(
         document: &FullTextDocument,
         data_manager: &HTMLDataManager,
     ) -> HTMLDocument {
-        HTMLParser::parse_document(document, data_manager).await
+        HTMLParser::parse_document(document, data_manager)
     }
 
     pub async fn do_complete(

@@ -12,9 +12,7 @@ pub async fn find_document_highlights(
     html_document: &HTMLDocument,
 ) -> Vec<DocumentHighlight> {
     let offset = document.offset_at(*position);
-    if let Some(node) = html_document.find_node_at(offset as usize).await {
-        let node = node.read().await;
-
+    if let Some(node) = html_document.find_node_at(offset as usize) {
         if node.tag.is_none() {
             return vec![];
         }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use async_recursion::async_recursion;
 use lsp_textdocument::FullTextDocument;
@@ -7,7 +7,6 @@ use lsp_types::{
     InsertTextFormat, Position, Range, TextEdit,
 };
 use regex::Regex;
-use tokio::sync::RwLock;
 
 use crate::{
     language_facts::{
@@ -72,12 +71,13 @@ impl HTMLCompletion {
             }
         }
 
-        let void_elements = data_manager.get_void_elements(document.language_id()).await;
+        let void_elements = data_manager.get_void_elements(document.language_id());
 
         let text = document.get_content(None);
         let offset = document.offset_at(*position).try_into().unwrap();
 
-        let node = html_document.find_node_before(offset).await;
+        let mut parent_list = vec![];
+        let node = html_document.find_node_before(offset, &mut parent_list);
 
         if node.is_none() {
             return result;
@@ -92,7 +92,8 @@ impl HTMLCompletion {
             data_providers,
             void_elements,
             settings,
-            node: Arc::clone(&node),
+            node: &node,
+            parent_list,
             current_tag: None,
             does_support_markdown: self.supports_markdown,
             html_document,
@@ -101,8 +102,6 @@ impl HTMLCompletion {
             position,
             data_manager,
         };
-
-        let node = node.read().await;
 
         let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent, true);
 
@@ -328,8 +327,7 @@ impl HTMLCompletion {
         } else {
             "'$1'".to_string()
         };
-        let node = html_document.find_node_before(offset).await?;
-        let node = node.read().await;
+        let node = html_document.find_node_before(offset, &mut vec![])?;
         if node.start < offset
             && !node
                 .end_tag_start
@@ -375,9 +373,8 @@ impl HTMLCompletion {
         }
         let char = document.get_content(None).as_bytes()[offset - 1];
         if char == b'>' {
-            let void_elements = data_manager.get_void_elements(document.language_id()).await;
-            let node = html_document.find_node_before(offset).await?;
-            let node = node.read().await;
+            let void_elements = data_manager.get_void_elements(document.language_id());
+            let node = html_document.find_node_before(offset, &mut vec![])?;
             let node_tag = node.tag.as_ref()?;
             if !data_manager.is_void_element(&node_tag, &void_elements)
                 && node.start < offset
@@ -400,9 +397,9 @@ impl HTMLCompletion {
                 }
             }
         } else if char == b'/' {
-            let mut node_wrap = html_document.find_node_before(offset).await?;
+            let mut parent_list = vec![];
+            let mut node = html_document.find_node_before(offset, &mut parent_list)?;
             loop {
-                let node = node_wrap.read().await;
                 if !node.closed
                     || node
                         .end_tag_start
@@ -410,11 +407,8 @@ impl HTMLCompletion {
                 {
                     break;
                 }
-                let parent = node.parent.upgrade()?;
-                drop(node);
-                node_wrap = parent;
+                node = parent_list.pop()?;
             }
-            let node = node_wrap.read().await;
             let node_tag = node.tag.as_ref()?;
             let mut scanner = Scanner::new(
                 document.get_content(None),
@@ -446,7 +440,8 @@ struct CompletionContext<'a> {
     data_providers: Vec<&'a Box<dyn IHTMLDataProvider>>,
     void_elements: Vec<String>,
     settings: Option<&'a CompletionConfiguration>,
-    node: Arc<RwLock<Node>>,
+    node: &'a Node,
+    parent_list: Vec<&'a Node>,
     current_tag: Option<String>,
     does_support_markdown: bool,
     html_document: &'a HTMLDocument,
@@ -633,11 +628,10 @@ impl CompletionContext<'_> {
         #[async_recursion]
         async fn add_node_data_attributes(
             data_attributes: &mut HashMap<String, String>,
-            node: Arc<RwLock<Node>>,
+            node: &Node,
             existing_attributes: &HashMap<String, bool>,
             data_attr: &str,
         ) {
-            let node = node.read().await;
             for attr in node.attribute_names() {
                 if attr.starts_with(data_attr)
                     && !data_attributes.contains_key(&attr[..])
@@ -647,24 +641,14 @@ impl CompletionContext<'_> {
                 }
             }
             for child in &node.children {
-                add_node_data_attributes(
-                    data_attributes,
-                    Arc::clone(child),
-                    existing_attributes,
-                    data_attr,
-                )
-                .await;
+                add_node_data_attributes(data_attributes, child, existing_attributes, data_attr)
+                    .await;
             }
         }
 
         for root in &self.html_document.roots {
-            add_node_data_attributes(
-                &mut data_attributes,
-                Arc::clone(root),
-                existing_attributes,
-                data_attr,
-            )
-            .await;
+            add_node_data_attributes(&mut data_attributes, root, existing_attributes, data_attr)
+                .await;
         }
 
         for (attr, value) in data_attributes {
@@ -804,13 +788,13 @@ impl CompletionContext<'_> {
         } else {
             ">"
         };
-        let mut cur = Some(Arc::clone(&self.node));
+        let mut cur = Some(self.node);
+        let mut cur_parent_list = self.parent_list.clone();
         if in_open_tag {
-            cur = cur.unwrap().read().await.parent.upgrade();
+            cur = cur_parent_list.pop();
         }
         while cur.is_some() {
-            let c = cur.unwrap();
-            let cur_node = c.read().await;
+            let cur_node = cur.unwrap();
             let tag = &cur_node.tag;
             if tag.is_some()
                 && (!cur_node.closed
@@ -848,7 +832,7 @@ impl CompletionContext<'_> {
                 });
                 return;
             }
-            cur = cur_node.parent.upgrade()
+            cur = cur_parent_list.pop();
         }
         if in_open_tag {
             return;
@@ -982,7 +966,7 @@ impl CompletionContext<'_> {
 
     async fn get_existing_attributes(&self) -> HashMap<String, bool> {
         let mut map: HashMap<String, bool> = HashMap::new();
-        for name in self.node.read().await.attribute_names() {
+        for name in self.node.attribute_names() {
             map.insert((*name).to_string(), true);
         }
         map

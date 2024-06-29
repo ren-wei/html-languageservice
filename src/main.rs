@@ -9,7 +9,7 @@ async fn main() {
     let position = Position::new(0, 1);
     // hover
     let data_manager = HTMLDataManager::new(true, None);
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager).await;
+    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
     let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
     let result = ls
         .do_hover(&document, &position, &html_document, None, &data_manager)

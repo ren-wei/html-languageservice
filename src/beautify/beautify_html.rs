@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use async_recursion::async_recursion;
 use regex::Regex;
-use tokio::sync::RwLock;
 
 use crate::{
     parse_html_document, parser::html_document::Node,
@@ -10,9 +7,9 @@ use crate::{
 };
 
 pub async fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> String {
-    let html_document = parse_html_document(content, "html", &HTMLDataManager::default()).await;
+    let html_document = parse_html_document(content, "html", &HTMLDataManager::default());
     let mut formated = String::new();
-    for root in html_document.roots {
+    for root in &html_document.roots {
         formated.push_str(&beautify_node(content, root, options, 0).await);
     }
     if !formated.ends_with('\n') && options.end_with_newline {
@@ -25,11 +22,10 @@ pub async fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> 
 #[async_recursion]
 async fn beautify_node(
     content: &str,
-    node: Arc<RwLock<Node>>,
+    node: &Node,
     options: &HTMLFormatConfiguration,
     level: usize,
 ) -> String {
-    let node = node.read().await;
     let tag = node.tag.as_ref().unwrap();
     let mut attrs_format = String::new();
     let attrs_is_wrap = node_attrs_is_wrap(&node, level, options);
@@ -71,15 +67,13 @@ async fn beautify_node(
         let mut prev_child_end = start_tag_end;
         for (i, child) in node.children.iter().enumerate() {
             // before text of each child
-            let child_r = child.read().await;
-            let text = &content[prev_child_end..child_r.start];
+            let text = &content[prev_child_end..child.start];
             children.push_str(&beautify_text(text, level + 1, options));
-            prev_child_end = child_r.end;
-            drop(child_r);
+            prev_child_end = child.end;
             // child
             children.push_str(&format!(
                 "\n{}",
-                beautify_node(content, Arc::clone(child), options, level + 1).await
+                beautify_node(content, &child, options, level + 1).await
             ));
             // after text of last child
             if i == node.children.len() - 1 {
