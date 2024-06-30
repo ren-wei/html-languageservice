@@ -11,7 +11,7 @@ The basics of an HTML language server.
 - [x] hover
 - [x] format
 - [x] findDocumentHighlights
-- [ ] findDocumentLinks
+- [x] findDocumentLinks
 - [ ] findDocumentSymbols
 - [ ] getFoldingRanges
 - [ ] getSelectionRanges
