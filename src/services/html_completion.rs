@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use async_recursion::async_recursion;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{
     Command, CompletionItem, CompletionItemKind, CompletionList, CompletionTextEdit, Documentation,
@@ -120,30 +119,26 @@ impl HTMLCompletion {
                         if position.line == 0 {
                             content.suggest_doctype(offset, end_pos);
                         }
-                        content.collect_tag_suggestions(offset, end_pos).await;
+                        content.collect_tag_suggestions(offset, end_pos);
                         return result;
                     }
                 }
                 TokenType::StartTag => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content
-                            .collect_open_tag_suggestions(
-                                scanner.get_token_offset(),
-                                scanner.get_token_end(),
-                            )
-                            .await;
+                        content.collect_open_tag_suggestions(
+                            scanner.get_token_offset(),
+                            scanner.get_token_end(),
+                        );
                         return result;
                     }
                     content.current_tag = Some(scanner.get_token_text().to_string());
                 }
                 TokenType::AttributeName => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content
-                            .collect_attribute_name_suggestions(
-                                scanner.get_token_offset(),
-                                scanner.get_token_end(),
-                            )
-                            .await;
+                        content.collect_attribute_name_suggestions(
+                            scanner.get_token_offset(),
+                            scanner.get_token_end(),
+                        );
                         return result;
                     }
                     content.current_attribute_name = scanner.get_token_text().to_string();
@@ -184,27 +179,21 @@ impl HTMLCompletion {
                                     offset,
                                     TokenType::StartTag,
                                 );
-                                content
-                                    .collect_tag_suggestions(start_pos, end_tag_pos)
-                                    .await;
+                                content.collect_tag_suggestions(start_pos, end_tag_pos);
                                 return result;
                             }
                             ScannerState::WithinTag => {
-                                content
-                                    .collect_attribute_name_suggestions(
-                                        scanner.get_token_end(),
-                                        offset,
-                                    )
-                                    .await;
+                                content.collect_attribute_name_suggestions(
+                                    scanner.get_token_end(),
+                                    offset,
+                                );
                                 return result;
                             }
                             ScannerState::AfterAttributeName => {
-                                content
-                                    .collect_attribute_name_suggestions(
-                                        scanner.get_token_end(),
-                                        offset,
-                                    )
-                                    .await;
+                                content.collect_attribute_name_suggestions(
+                                    scanner.get_token_end(),
+                                    offset,
+                                );
                                 return result;
                             }
                             ScannerState::BeforeAttributeValue => {
@@ -217,13 +206,11 @@ impl HTMLCompletion {
                                 return result;
                             }
                             ScannerState::AfterOpeningEndTag => {
-                                content
-                                    .collect_close_tag_suggestions(
-                                        scanner.get_token_offset() - 1,
-                                        false,
-                                        offset,
-                                    )
-                                    .await;
+                                content.collect_close_tag_suggestions(
+                                    scanner.get_token_offset() - 1,
+                                    false,
+                                    offset,
+                                );
                                 return result;
                             }
                             ScannerState::WithinContent => {
@@ -237,12 +224,10 @@ impl HTMLCompletion {
                 TokenType::StartTagClose => {
                     if offset <= scanner.get_token_end() {
                         if content.current_tag.is_some() {
-                            content
-                                .collect_auto_close_tag_suggestion(
-                                    scanner.get_token_end(),
-                                    &content.current_tag.clone().unwrap(),
-                                )
-                                .await;
+                            content.collect_auto_close_tag_suggestion(
+                                scanner.get_token_end(),
+                                &content.current_tag.clone().unwrap(),
+                            );
                             return result;
                         }
                     }
@@ -262,9 +247,11 @@ impl HTMLCompletion {
                             offset,
                             TokenType::EndTag,
                         );
-                        content
-                            .collect_close_tag_suggestions(after_open_bracket, false, end_offset)
-                            .await;
+                        content.collect_close_tag_suggestions(
+                            after_open_bracket,
+                            false,
+                            end_offset,
+                        );
                         return result;
                     }
                 }
@@ -274,13 +261,11 @@ impl HTMLCompletion {
                         while start > 0 {
                             let ch = text.bytes().nth(start).unwrap();
                             if ch == b'/' {
-                                content
-                                    .collect_close_tag_suggestions(
-                                        start,
-                                        false,
-                                        scanner.get_token_end(),
-                                    )
-                                    .await;
+                                content.collect_close_tag_suggestions(
+                                    start,
+                                    false,
+                                    scanner.get_token_end(),
+                                );
                                 return result;
                             } else if !is_white_space(std::str::from_utf8(&[ch]).unwrap()) {
                                 break;
@@ -301,7 +286,7 @@ impl HTMLCompletion {
         result
     }
 
-    pub async fn do_quote_complete(
+    pub fn do_quote_complete(
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
@@ -360,7 +345,7 @@ impl HTMLCompletion {
         None
     }
 
-    pub async fn do_tag_complete(
+    pub fn do_tag_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -479,17 +464,12 @@ impl CompletionContext<'_> {
         offset
     }
 
-    async fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize) {
-        self.collect_open_tag_suggestions(tag_start, tag_end).await;
-        self.collect_close_tag_suggestions(tag_start, true, tag_end)
-            .await;
+    fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize) {
+        self.collect_open_tag_suggestions(tag_start, tag_end);
+        self.collect_close_tag_suggestions(tag_start, true, tag_end);
     }
 
-    async fn collect_open_tag_suggestions(
-        &mut self,
-        after_open_bracket: usize,
-        tag_name_end: usize,
-    ) {
+    fn collect_open_tag_suggestions(&mut self, after_open_bracket: usize, tag_name_end: usize) {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         for provider in &self.data_providers {
             for tag in provider.provide_tags() {
@@ -524,7 +504,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    async fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
+    fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
         let mut replace_end = self.offset;
         let text = self.document.get_content(None);
         while replace_end < name_end && text.as_bytes().get(replace_end).is_some_and(|c| *c != b'<')
@@ -556,7 +536,7 @@ impl CompletionContext<'_> {
             }
         }
 
-        let mut existing_attributes = self.get_existing_attributes().await;
+        let mut existing_attributes = self.get_existing_attributes();
         existing_attributes.insert(current_attribute.to_string(), false);
 
         for provider in &self.data_providers {
@@ -612,11 +592,10 @@ impl CompletionContext<'_> {
                 });
             }
         }
-        self.collect_data_attributes_suggestions(range, &existing_attributes)
-            .await;
+        self.collect_data_attributes_suggestions(range, &existing_attributes);
     }
 
-    async fn collect_data_attributes_suggestions(
+    fn collect_data_attributes_suggestions(
         &mut self,
         range: Range,
         existing_attributes: &HashMap<String, bool>,
@@ -625,8 +604,7 @@ impl CompletionContext<'_> {
         let mut data_attributes: HashMap<String, String> = HashMap::new();
         data_attributes.insert(data_attr.to_string(), format!(r#"{data_attr}$1="$2""#));
 
-        #[async_recursion]
-        async fn add_node_data_attributes(
+        fn add_node_data_attributes(
             data_attributes: &mut HashMap<String, String>,
             node: &Node,
             existing_attributes: &HashMap<String, bool>,
@@ -641,14 +619,12 @@ impl CompletionContext<'_> {
                 }
             }
             for child in &node.children {
-                add_node_data_attributes(data_attributes, child, existing_attributes, data_attr)
-                    .await;
+                add_node_data_attributes(data_attributes, child, existing_attributes, data_attr);
             }
         }
 
         for root in &self.html_document.roots {
-            add_node_data_attributes(&mut data_attributes, root, existing_attributes, data_attr)
-                .await;
+            add_node_data_attributes(&mut data_attributes, root, existing_attributes, data_attr);
         }
 
         for (attr, value) in data_attributes {
@@ -771,7 +747,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    async fn collect_close_tag_suggestions(
+    fn collect_close_tag_suggestions(
         &mut self,
         after_open_bracket: usize,
         in_open_tag: bool,
@@ -866,7 +842,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    async fn collect_auto_close_tag_suggestion(&mut self, tag_close_end: usize, tag: &str) {
+    fn collect_auto_close_tag_suggestion(&mut self, tag_close_end: usize, tag: &str) {
         if self.settings.is_some() && self.settings.unwrap().hide_auto_complete_proposals {
             return;
         }
@@ -964,7 +940,7 @@ impl CompletionContext<'_> {
         });
     }
 
-    async fn get_existing_attributes(&self) -> HashMap<String, bool> {
+    fn get_existing_attributes(&self) -> HashMap<String, bool> {
         let mut map: HashMap<String, bool> = HashMap::new();
         for name in self.node.attribute_names() {
             map.insert((*name).to_string(), true);

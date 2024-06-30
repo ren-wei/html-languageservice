@@ -147,7 +147,7 @@ fn assert_completion(
     }
 }
 
-async fn test_quote_completion(
+fn test_quote_completion(
     value: &str,
     expected: Option<String>,
     options: Option<&CompletionConfiguration>,
@@ -160,11 +160,11 @@ async fn test_quote_completion(
     let html_document =
         HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
     let actual =
-        HTMLLanguageService::do_quote_complete(&document, &position, &html_document, options).await;
+        HTMLLanguageService::do_quote_complete(&document, &position, &html_document, options);
     assert_eq!(actual, expected);
 }
 
-async fn test_tag_completion(value: &str, expected: Option<String>) {
+fn test_tag_completion(value: &str, expected: Option<String>) {
     let offset = value.find('|').unwrap();
     let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
@@ -175,9 +175,7 @@ async fn test_tag_completion(value: &str, expected: Option<String>) {
     let position = document.position_at(offset as u32);
     let data_manager = HTMLDataManager::default();
     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
-    let actual = ls
-        .do_tag_complete(&document, &position, &html_document, &data_manager)
-        .await;
+    let actual = ls.do_tag_complete(&document, &position, &html_document, &data_manager);
     assert_eq!(actual, expected);
 }
 
@@ -1694,9 +1692,9 @@ async fn settings() {
     .await;
 }
 
-#[tokio::test]
-async fn do_quote_complete() {
-    test_quote_completion("<a foo=|", Some(r#""$1""#.to_string()), None).await;
+#[test]
+fn do_quote_complete() {
+    test_quote_completion("<a foo=|", Some(r#""$1""#.to_string()), None);
     test_quote_completion(
         "<a foo=|",
         Some("'$1'".to_string()),
@@ -1705,8 +1703,7 @@ async fn do_quote_complete() {
             hide_auto_complete_proposals: false,
             provider: HashMap::new(),
         }),
-    )
-    .await;
+    );
     test_quote_completion(
         "<a foo=|",
         None,
@@ -1715,42 +1712,38 @@ async fn do_quote_complete() {
             hide_auto_complete_proposals: false,
             provider: HashMap::new(),
         }),
-    )
-    .await;
-    test_quote_completion("<a foo=|=", None, None).await;
-    test_quote_completion(r#"<a foo=|"bar""#, None, None).await;
-    test_quote_completion("<a foo=|></a>", Some(r#""$1""#.to_string()), None).await;
-    test_quote_completion(r#"<a foo="bar=|""#, None, None).await;
-    test_quote_completion(r#"<a baz=| foo="bar">"#, Some(r#""$1""#.to_string()), None).await;
-    test_quote_completion("<a>< foo=| /a>", None, None).await;
-    test_quote_completion("<a></ foo=| a>", None, None).await;
+    );
+    test_quote_completion("<a foo=|=", None, None);
+    test_quote_completion(r#"<a foo=|"bar""#, None, None);
+    test_quote_completion("<a foo=|></a>", Some(r#""$1""#.to_string()), None);
+    test_quote_completion(r#"<a foo="bar=|""#, None, None);
+    test_quote_completion(r#"<a baz=| foo="bar">"#, Some(r#""$1""#.to_string()), None);
+    test_quote_completion("<a>< foo=| /a>", None, None);
+    test_quote_completion("<a></ foo=| a>", None, None);
     test_quote_completion(
         r#"<a foo="bar" \n baz=| ></a>"#,
         Some(r#""$1""#.to_string()),
         None,
-    )
-    .await;
+    );
 }
 
 #[tokio::test]
 async fn do_tag_complete() {
-    test_tag_completion("<div>|", Some("$0</div>".to_string())).await;
-    test_tag_completion("<div>|</div>", None).await;
-    test_tag_completion(r#"<div class="">|"#, Some("$0</div>".to_string())).await;
-    test_tag_completion("<img>|", None).await;
-    test_tag_completion("<div><br></|", Some("div>".to_string())).await;
-    test_tag_completion("<div><br><span></span></|", Some("div>".to_string())).await;
+    test_tag_completion("<div>|", Some("$0</div>".to_string()));
+    test_tag_completion("<div>|</div>", None);
+    test_tag_completion(r#"<div class="">|"#, Some("$0</div>".to_string()));
+    test_tag_completion("<img>|", None);
+    test_tag_completion("<div><br></|", Some("div>".to_string()));
+    test_tag_completion("<div><br><span></span></|", Some("div>".to_string()));
     test_tag_completion(
         "<div><h1><br><span></span><img></| </h1></div>",
         Some("h1>".to_string()),
-    )
-    .await;
+    );
     test_tag_completion(
         "<ng-template><td><ng-template></|   </td> </ng-template>",
         Some("ng-template>".to_string()),
-    )
-    .await;
-    test_tag_completion("<div><br></|>", Some("div".to_string())).await;
+    );
+    test_tag_completion("<div><br></|>", Some("div".to_string()));
 }
 
 #[derive(Default)]

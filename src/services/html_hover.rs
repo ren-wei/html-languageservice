@@ -94,28 +94,24 @@ impl HTMLHover {
                 &mut context,
             );
             if tag_range.is_some() {
-                return self
-                    .get_tag_hover(
-                        &node.tag.clone().unwrap(),
-                        tag_range.unwrap(),
-                        false,
-                        &mut context,
-                    )
-                    .await;
+                return self.get_tag_hover(
+                    &node.tag.clone().unwrap(),
+                    tag_range.unwrap(),
+                    false,
+                    &mut context,
+                );
             }
             return None;
         }
 
         let tag_range = self.get_tag_name_range(TokenType::StartTag, node.start, &mut context);
         if tag_range.is_some() {
-            return self
-                .get_tag_hover(
-                    &node.tag.clone().unwrap(),
-                    tag_range.unwrap(),
-                    true,
-                    &mut context,
-                )
-                .await;
+            return self.get_tag_hover(
+                &node.tag.clone().unwrap(),
+                tag_range.unwrap(),
+                true,
+                &mut context,
+            );
         }
 
         let attr_range =
@@ -123,9 +119,7 @@ impl HTMLHover {
         if attr_range.is_some() {
             let tag = node.tag.clone().unwrap();
             let attr = document.get_content(attr_range);
-            return self
-                .get_attr_hover(&tag, attr, attr_range.unwrap(), &mut context)
-                .await;
+            return self.get_attr_hover(&tag, attr, attr_range.unwrap(), &mut context);
         }
 
         let entity_range = self.get_entity_range(&mut context);
@@ -177,7 +171,7 @@ impl HTMLHover {
         None
     }
 
-    async fn get_tag_hover<'a>(
+    fn get_tag_hover<'a>(
         &self,
         cur_tag: &str,
         range: Range,
@@ -221,7 +215,7 @@ impl HTMLHover {
         None
     }
 
-    async fn get_attr_hover<'a>(
+    fn get_attr_hover<'a>(
         &self,
         cur_tag: &str,
         cur_attr: &str,

@@ -6,7 +6,7 @@ use crate::parser::{
     html_scanner::{Scanner, ScannerState, TokenType},
 };
 
-pub async fn find_document_highlights(
+pub fn find_document_highlights(
     document: &FullTextDocument,
     position: &Position,
     html_document: &HTMLDocument,
