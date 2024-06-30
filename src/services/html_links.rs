@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{DocumentLink, Url};
+use lsp_types::{DocumentLink, Range, Url};
+use regex::Regex;
 
 use crate::{
     parser::html_scanner::{Scanner, ScannerState, TokenType},
@@ -48,6 +49,7 @@ pub fn find_document_links(
                         if !in_base_tag {
                             // don't highlight the base link itself
                             if let Some(link) = create_link(
+                                uri,
                                 document,
                                 document_context,
                                 attribute_value,
@@ -109,16 +111,129 @@ pub fn find_document_links(
 }
 
 fn create_link(
+    uri: &Url,
     document: &FullTextDocument,
     document_context: &impl DocumentContext,
     attribute_value: &str,
-    start_offset: usize,
-    end_offset: usize,
+    mut start_offset: usize,
+    mut end_offset: usize,
     base: &Option<String>,
 ) -> Option<DocumentLink> {
-    todo!()
+    let token_content = normalize_ref(attribute_value);
+    if !validate_ref(token_content) {
+        return None;
+    }
+    if token_content.len() < attribute_value.len() {
+        start_offset += 1;
+        end_offset -= 1;
+    }
+    let workspace_url = get_workspace_url(uri, token_content, document_context, base)?;
+    let target = validate_and_clean_uri(&workspace_url, uri);
+
+    Some(DocumentLink {
+        range: Range::new(
+            document.position_at(start_offset as u32),
+            document.position_at(end_offset as u32),
+        ),
+        target,
+        tooltip: None,
+        data: None,
+    })
 }
 
 fn normalize_ref(url: &str) -> &str {
-    todo!()
+    if url.len() > 0 {
+        let url_bytes = url.as_bytes();
+        let first = url_bytes[0];
+        let last = url_bytes[url_bytes.len() - 1];
+        if first == last && (first == b'\'' || first == b'"') {
+            return &url[1..url_bytes.len() - 1];
+        }
+    }
+    url
+}
+
+fn validate_ref(url: &str) -> bool {
+    if url.len() == 0 {
+        return false;
+    }
+    Regex::new(r"\b(\w[\w\d+.-]*:\/\/)?[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))")
+        .unwrap()
+        .is_match(url)
+}
+
+fn get_workspace_url(
+    document_uri: &Url,
+    token_content: &str,
+    document_context: &impl DocumentContext,
+    base: &Option<String>,
+) -> Option<String> {
+    if Regex::new(r"(^\s*(?i)javascript\:)|([\n\r])")
+        .unwrap()
+        .is_match(token_content)
+    {
+        return None;
+    }
+
+    let token_content = token_content.trim_start();
+    let caps = Regex::new(r"^(\w[\w\d+.-]*):")
+        .unwrap()
+        .captures(&token_content);
+    if let Some(caps) = caps {
+        // Absolute link that needs no treatment
+        let schema = caps.get(1).unwrap().as_str().to_lowercase();
+        if schema == "http" || schema == "https" || schema == "file" {
+            return Some(token_content.to_string());
+        }
+        return None;
+    }
+    if token_content.starts_with("#") {
+        return Some(format!("{}{}", document_uri.to_string(), token_content));
+    }
+
+    if token_content.starts_with("//") {
+        // Absolute link (that does not name the protocol)
+        let picked_scheme = if document_uri.to_string().starts_with("https://") {
+            "https".to_string()
+        } else {
+            "http".to_string()
+        };
+        return Some(picked_scheme + ":" + token_content.trim_start());
+    }
+
+    let document_uri = document_uri.to_string();
+    document_context
+        .resolve_reference(
+            &token_content,
+            if base.is_some() {
+                base.as_ref().unwrap()
+            } else {
+                &document_uri
+            },
+        )
+        .map(|v| v.to_string())
+}
+
+fn validate_and_clean_uri(uri_str: &str, document_uri: &Url) -> Option<Url> {
+    if let Ok(mut uri) = Url::parse(uri_str) {
+        if uri.scheme() == "file" && uri.query().is_some() {
+            // see https://github.com/microsoft/vscode/issues/194577 & https://github.com/microsoft/vscode/issues/206238
+            uri.set_query(None);
+        }
+        let uri_str = uri.to_string();
+        if uri.scheme() == "file"
+            && uri.fragment().is_some()
+            && !(uri_str.starts_with(&document_uri.to_string())
+                && uri_str
+                    .bytes()
+                    .nth(document_uri.to_string().len())
+                    .is_some_and(|code| code == b'#'))
+        {
+            uri.set_fragment(None);
+            return Some(uri);
+        }
+        Some(Url::parse(&uri_str).unwrap())
+    } else {
+        None
+    }
 }

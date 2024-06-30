@@ -1027,13 +1027,13 @@ fn get_word_end(s: &str, offset: usize, limit: usize) -> usize {
 }
 
 pub trait DocumentContext {
-    fn resolve_reference(&self, reference: &str, base: &str) -> Option<&str>;
+    fn resolve_reference(&self, reference: &str, base: &str) -> Option<String>;
 }
 
 pub struct DefaultDocumentContext;
 
 impl DocumentContext for DefaultDocumentContext {
-    fn resolve_reference(&self, _reference: &str, _base: &str) -> Option<&str> {
+    fn resolve_reference(&self, _reference: &str, _base: &str) -> Option<String> {
         None
     }
 }
