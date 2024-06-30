@@ -34,23 +34,30 @@ use lsp_types::Position;
 
 #[tokio::main]
 async fn main() {
-    // init
-    let options = Arc::new(LanguageServiceOptions::default());
-    let language_service = LanguageService::new(options, None);
     // prepare
     let document = FullTextDocument::new("html".to_string(), 1, "<div></div>".to_string());
-    let html_document = language_service.parse_html_document(&document).await;
     let position = Position::new(0, 1);
-    let document_context = DefaultDocumentContext {};
-    // complete
-    let completion_list = language_service
-        .do_complete(&document, &position, &html_document, document_context, None)
-        .await;
-    println!("completion_list: {:#?}", completion_list);
+    // init
+    let data_manager = HTMLDataManager::new(true, None);
+    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
+    let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
     // hover
-    let hover = language_service
-        .do_hover(&document, &position, &html_document, None)
+    let hover = ls
+        .do_hover(&document, &position, &html_document, None, &data_manager)
         .await;
     println!("hover: {:#?}", hover);
+    // complete
+    let document_context = DefaultDocumentContext;
+    let completion_list = ls
+        .do_complete(
+            &document,
+            &position,
+            &html_document,
+            document_context,
+            None,
+            &data_manager,
+        )
+        .await;
+    println!("completion_list: {:#?}", completion_list);
 }
 ```
