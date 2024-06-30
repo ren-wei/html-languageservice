@@ -1,10 +1,15 @@
+#[cfg(feature = "experimental")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "experimental")]
 use lsp_types::{Position, Range, TextEdit};
+#[cfg(feature = "experimental")]
 use regex::Regex;
 
+#[cfg(feature = "experimental")]
 use crate::beautify::beautify_html::html_beautify;
 
-pub async fn format(
+#[cfg(feature = "experimental")]
+pub fn format(
     document: &FullTextDocument,
     range: &Option<Range>,
     options: &HTMLFormatConfiguration,
@@ -83,7 +88,7 @@ pub async fn format(
         )
     };
 
-    let mut result = html_beautify(&trim_left(value), &options).await;
+    let mut result = html_beautify(&trim_left(value), &options);
 
     if initial_indent_level > 0 {
         let indent = if options.insert_spaces {
@@ -111,10 +116,12 @@ pub async fn format(
     vec![TextEdit::new(range, result)]
 }
 
+#[cfg(feature = "experimental")]
 fn trim_left(value: &str) -> String {
     Regex::new("^\\s+").unwrap().replace(value, "").to_string()
 }
 
+#[cfg(feature = "experimental")]
 fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfiguration) -> usize {
     let mut i = offset;
     let mut n_chars = 0;
@@ -136,10 +143,12 @@ fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfig
     n_chars / tab_size
 }
 
+#[cfg(feature = "experimental")]
 fn is_eol(text: &str, offset: usize) -> bool {
     text.bytes().nth(offset).is_some_and(|c| c == b'\n')
 }
 
+#[cfg(feature = "experimental")]
 fn is_whitespace(text: &str, offset: usize) -> bool {
     text.bytes()
         .nth(offset)

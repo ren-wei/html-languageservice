@@ -11,6 +11,9 @@ readme = "README.md"
 keywords = ["html", "lsp", "languageservice", "languageserver"]
 categories = ["development-tools"]
 
+[features]
+experimental = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

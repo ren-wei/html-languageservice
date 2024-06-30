@@ -1,8 +1,12 @@
+#[cfg(feature = "experimental")]
 use html_languageservice::{HTMLFormatConfiguration, HTMLLanguageService};
+#[cfg(feature = "experimental")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "experimental")]
 use lsp_types::*;
 
-async fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) {
+#[cfg(feature = "experimental")]
+fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) {
     let range_start = unformatted.find('|');
     let range_end = unformatted.rfind('|');
     let mut range = None;
@@ -24,7 +28,7 @@ async fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfigura
         FullTextDocument::new("html".to_string(), 0, unformatted.to_string())
     };
 
-    let edits = HTMLLanguageService::format(&document, range, &options).await;
+    let edits = HTMLLanguageService::format(&document, range, &options);
 
     let content = document.get_content(None);
     let mut formatted = content.to_string();
@@ -37,8 +41,9 @@ async fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfigura
     assert_eq!(formatted, expected);
 }
 
-#[tokio::test]
-async fn full_document() {
+#[cfg(feature = "experimental")]
+#[test]
+fn full_document() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "<br>",
@@ -55,11 +60,12 @@ async fn full_document() {
         tab_size: 2,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn text_content() {
+#[cfg(feature = "experimental")]
+#[test]
+fn text_content() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "text  text2",
@@ -76,11 +82,12 @@ async fn text_content() {
         tab_size: 2,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn inline_text_content() {
+#[cfg(feature = "experimental")]
+#[test]
+fn inline_text_content() {
     let unformatted = [
         r#"<div  class = "foo">  text  text2  </div>"#, // wrap
     ]
@@ -93,11 +100,12 @@ async fn inline_text_content() {
         tab_size: 2,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn brother_text_content() {
+#[cfg(feature = "experimental")]
+#[test]
+fn brother_text_content() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "text  text2",
@@ -118,11 +126,12 @@ async fn brother_text_content() {
         tab_size: 2,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn indent_empty_lines() {
+#[cfg(feature = "experimental")]
+#[test]
+fn indent_empty_lines() {
     let unformatted = [
         "<div>",  // wrap
         " ",      // wrap
@@ -159,13 +168,14 @@ async fn indent_empty_lines() {
         indent_empty_lines: false,
         ..Default::default()
     };
-    format(&unformatted, &expected_false, &options).await;
+    format(&unformatted, &expected_false, &options);
     options.indent_empty_lines = true;
-    format(&unformatted, &expected_true, &options).await;
+    format(&unformatted, &expected_true, &options);
 }
 
-#[tokio::test]
-async fn self_closing_tag() {
+#[cfg(feature = "experimental")]
+#[test]
+fn self_closing_tag() {
     let unformatted = [
         r#"<img  src = "https://exsample.com"/>"#, // wrap
     ]
@@ -177,11 +187,12 @@ async fn self_closing_tag() {
     let options = HTMLFormatConfiguration {
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn wrap_line_length() {
+#[cfg(feature = "experimental")]
+#[test]
+fn wrap_line_length() {
     let unformatted = [
         r#"<div title="a div container" data-id="123456" data-type="node">content</div>"#, // wrap
     ]
@@ -198,7 +209,7 @@ async fn wrap_line_length() {
         "</div>",
     ]
     .join("\n");
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 
     options.wrap_line_length = Some(60);
     let expected = [
@@ -211,11 +222,12 @@ async fn wrap_line_length() {
         "</div>",
     ]
     .join("\n");
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn self_closing_tag_wrap_line_length() {
+#[cfg(feature = "experimental")]
+#[test]
+fn self_closing_tag_wrap_line_length() {
     let unformatted = [
             r#"<img  src = "https://exsample.com" title="a image container" data-id="123456" data-type="node"/>"#,
         ]
@@ -234,11 +246,12 @@ async fn self_closing_tag_wrap_line_length() {
         wrap_attributes_indent_size: Some(2),
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn preserve_new_lines() {
+#[cfg(feature = "experimental")]
+#[test]
+fn preserve_new_lines() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "",
@@ -258,11 +271,12 @@ async fn preserve_new_lines() {
         preserve_new_lines: false,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn max_preserve_new_lines() {
+#[cfg(feature = "experimental")]
+#[test]
+fn max_preserve_new_lines() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "",
@@ -283,11 +297,12 @@ async fn max_preserve_new_lines() {
         max_preserve_new_lines: Some(1),
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn end_with_newline() {
+#[cfg(feature = "experimental")]
+#[test]
+fn end_with_newline() {
     let unformatted = [
         r#"<div  class = "foo">"#, // wrap
         "<br>",
@@ -306,11 +321,12 @@ async fn end_with_newline() {
         end_with_newline: true,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }
 
-#[tokio::test]
-async fn range() {
+#[cfg(feature = "experimental")]
+#[test]
+fn range() {
     let unformatted = [
         r#"<div  class = "foo">"#,
         r#"  |<img  src = "foo">|"#,
@@ -328,5 +344,5 @@ async fn range() {
         end_with_newline: true,
         ..Default::default()
     };
-    format(&unformatted, &expected, &options).await;
+    format(&unformatted, &expected, &options);
 }

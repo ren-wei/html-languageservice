@@ -1,16 +1,18 @@
-use async_recursion::async_recursion;
+#[cfg(feature = "experimental")]
 use regex::Regex;
 
+#[cfg(feature = "experimental")]
 use crate::{
     parse_html_document, parser::html_document::Node,
     services::html_formatter::HTMLFormatConfiguration, HTMLDataManager,
 };
 
-pub async fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> String {
+#[cfg(feature = "experimental")]
+pub fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> String {
     let html_document = parse_html_document(content, "html", &HTMLDataManager::default());
     let mut formated = String::new();
     for root in &html_document.roots {
-        formated.push_str(&beautify_node(content, root, options, 0).await);
+        formated.push_str(&beautify_node(content, root, options, 0));
     }
     if !formated.ends_with('\n') && options.end_with_newline {
         formated += "\n";
@@ -19,8 +21,8 @@ pub async fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> 
     formated
 }
 
-#[async_recursion]
-async fn beautify_node(
+#[cfg(feature = "experimental")]
+fn beautify_node(
     content: &str,
     node: &Node,
     options: &HTMLFormatConfiguration,
@@ -73,7 +75,7 @@ async fn beautify_node(
             // child
             children.push_str(&format!(
                 "\n{}",
-                beautify_node(content, &child, options, level + 1).await
+                beautify_node(content, &child, options, level + 1)
             ));
             // after text of last child
             if i == node.children.len() - 1 {
@@ -111,6 +113,7 @@ async fn beautify_node(
     }
 }
 
+#[cfg(feature = "experimental")]
 fn beautify_text(text: &str, level: usize, options: &HTMLFormatConfiguration) -> String {
     let whitespace_reg = Regex::new("\\s+").unwrap();
 
@@ -147,6 +150,7 @@ fn beautify_text(text: &str, level: usize, options: &HTMLFormatConfiguration) ->
     }
 }
 
+#[cfg(feature = "experimental")]
 fn get_indent(options: &HTMLFormatConfiguration, level: usize) -> String {
     if options.insert_spaces {
         " ".repeat(options.tab_size as usize * level)
@@ -155,6 +159,7 @@ fn get_indent(options: &HTMLFormatConfiguration, level: usize) -> String {
     }
 }
 
+#[cfg(feature = "experimental")]
 fn get_attr_indent(options: &HTMLFormatConfiguration, level: usize) -> String {
     let mut indent = get_indent(options, level);
     if let Some(indent_size) = options.wrap_attributes_indent_size {
@@ -173,10 +178,12 @@ fn get_attr_indent(options: &HTMLFormatConfiguration, level: usize) -> String {
     indent
 }
 
+#[cfg(feature = "experimental")]
 fn is_self_closing(node: &Node) -> bool {
     node.end_tag_start.is_none()
 }
 
+#[cfg(feature = "experimental")]
 fn node_is_wrap(
     node: &Node,
     level: usize,
@@ -213,6 +220,7 @@ fn node_is_wrap(
     total > options.wrap_line_length.unwrap()
 }
 
+#[cfg(feature = "experimental")]
 fn node_attrs_is_wrap(node: &Node, level: usize, options: &HTMLFormatConfiguration) -> bool {
     if options.wrap_line_length.is_none() {
         return false;
@@ -225,6 +233,7 @@ fn node_attrs_is_wrap(node: &Node, level: usize, options: &HTMLFormatConfigurati
     }
 }
 
+#[cfg(feature = "experimental")]
 fn get_left_tag_len(node: &Node, level: usize, options: &HTMLFormatConfiguration) -> Option<usize> {
     let tag = if let Some(tag) = &node.tag {
         tag

@@ -4,17 +4,17 @@ use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
+#[cfg(feature = "experimental")]
 use crate::services::html_formatter::format;
 use crate::services::html_highlight::find_document_highlights;
 use crate::services::html_hover::HTMLHover;
 use crate::services::html_links::find_document_links;
-use crate::{
-    CompletionConfiguration, DocumentContext, HTMLDataManager, HTMLFormatConfiguration,
-    HoverSettings,
-};
-use lsp_types::{
-    CompletionList, DocumentHighlight, DocumentLink, Hover, Position, Range, TextEdit, Url,
-};
+#[cfg(feature = "experimental")]
+use crate::HTMLFormatConfiguration;
+use crate::{CompletionConfiguration, DocumentContext, HTMLDataManager, HoverSettings};
+use lsp_types::{CompletionList, DocumentHighlight, DocumentLink, Hover, Position, Url};
+#[cfg(feature = "experimental")]
+use lsp_types::{Range, TextEdit};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -71,16 +71,16 @@ impl HTMLLanguageService {
             .set_completion_participants(completion_participants);
     }
 
-    pub async fn do_quote_complete(
+    pub fn do_quote_complete(
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
         settings: Option<&CompletionConfiguration>,
     ) -> Option<String> {
-        HTMLCompletion::do_quote_complete(document, position, html_document, settings).await
+        HTMLCompletion::do_quote_complete(document, position, html_document, settings)
     }
 
-    pub async fn do_tag_complete(
+    pub fn do_tag_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -89,7 +89,6 @@ impl HTMLLanguageService {
     ) -> Option<String> {
         self.html_completion
             .do_tag_complete(document, position, html_document, data_manager)
-            .await
     }
 
     pub async fn do_hover(
@@ -110,20 +109,21 @@ impl HTMLLanguageService {
     }
 
     /// Note: `format` is not prefect, it's under development
-    pub async fn format(
+    #[cfg(feature = "experimental")]
+    pub fn format(
         document: &FullTextDocument,
         range: Option<Range>,
         options: &HTMLFormatConfiguration,
     ) -> Vec<TextEdit> {
-        format(document, &range, options).await
+        format(document, &range, options)
     }
 
-    pub async fn find_document_highlights(
+    pub fn find_document_highlights(
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
     ) -> Vec<DocumentHighlight> {
-        find_document_highlights(document, position, html_document).await
+        find_document_highlights(document, position, html_document)
     }
 
     pub fn find_document_links(
