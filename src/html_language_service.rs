@@ -5,14 +5,18 @@ use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
 #[cfg(feature = "experimental")]
-use crate::services::html_formatter::format;
-use crate::services::html_highlight::find_document_highlights;
+use crate::services::html_formatter;
+use crate::services::html_highlight;
 use crate::services::html_hover::HTMLHover;
-use crate::services::html_links::find_document_links;
+use crate::services::html_links;
+use crate::services::html_symbols;
 #[cfg(feature = "experimental")]
 use crate::HTMLFormatConfiguration;
 use crate::{CompletionConfiguration, DocumentContext, HTMLDataManager, HoverSettings};
-use lsp_types::{CompletionList, DocumentHighlight, DocumentLink, Hover, Position, Url};
+use lsp_types::{
+    CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, Hover, Position,
+    SymbolInformation, Url,
+};
 #[cfg(feature = "experimental")]
 use lsp_types::{Range, TextEdit};
 
@@ -115,7 +119,7 @@ impl HTMLLanguageService {
         range: Option<Range>,
         options: &HTMLFormatConfiguration,
     ) -> Vec<TextEdit> {
-        format(document, &range, options)
+        html_formatter::format(document, &range, options)
     }
 
     pub fn find_document_highlights(
@@ -123,7 +127,7 @@ impl HTMLLanguageService {
         position: &Position,
         html_document: &HTMLDocument,
     ) -> Vec<DocumentHighlight> {
-        find_document_highlights(document, position, html_document)
+        html_highlight::find_document_highlights(document, position, html_document)
     }
 
     pub fn find_document_links(
@@ -132,6 +136,21 @@ impl HTMLLanguageService {
         document_context: &impl DocumentContext,
         data_manager: &HTMLDataManager,
     ) -> Vec<DocumentLink> {
-        find_document_links(uri, document, document_context, data_manager)
+        html_links::find_document_links(uri, document, document_context, data_manager)
+    }
+
+    pub fn find_document_symbols(
+        uri: &Url,
+        document: &FullTextDocument,
+        html_document: &HTMLDocument,
+    ) -> Vec<SymbolInformation> {
+        html_symbols::find_document_symbols(uri, document, html_document)
+    }
+
+    pub fn find_document_symbols2(
+        document: &FullTextDocument,
+        html_document: &HTMLDocument,
+    ) -> Vec<DocumentSymbol> {
+        html_symbols::find_document_symbols2(document, html_document)
     }
 }
