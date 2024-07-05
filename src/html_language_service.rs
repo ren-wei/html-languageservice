@@ -4,6 +4,7 @@ use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
+use crate::services::html_folding;
 #[cfg(feature = "experimental")]
 use crate::services::html_formatter;
 use crate::services::html_highlight;
@@ -12,9 +13,11 @@ use crate::services::html_links;
 use crate::services::html_symbols;
 #[cfg(feature = "experimental")]
 use crate::HTMLFormatConfiguration;
-use crate::{CompletionConfiguration, DocumentContext, HTMLDataManager, HoverSettings};
+use crate::{
+    CompletionConfiguration, DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings,
+};
 use lsp_types::{
-    CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, Hover, Position,
+    CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
     SymbolInformation, Url,
 };
 #[cfg(feature = "experimental")]
@@ -152,5 +155,13 @@ impl HTMLLanguageService {
         html_document: &HTMLDocument,
     ) -> Vec<DocumentSymbol> {
         html_symbols::find_document_symbols2(document, html_document)
+    }
+
+    pub fn get_folding_ranges(
+        document: FullTextDocument,
+        context: FoldingRangeContext,
+        data_manager: &HTMLDataManager,
+    ) -> Vec<FoldingRange> {
+        html_folding::get_folding_ranges(document, context, data_manager)
     }
 }

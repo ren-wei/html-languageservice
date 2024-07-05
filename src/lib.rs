@@ -44,6 +44,8 @@ pub use services::html_completion::{
     CompletionConfiguration, DefaultDocumentContext, DocumentContext, Quotes,
 };
 
+pub use services::html_folding::FoldingRangeContext;
+
 pub use services::html_formatter::HTMLFormatConfiguration;
 pub use services::html_hover::HoverSettings;
 
