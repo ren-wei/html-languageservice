@@ -2,6 +2,7 @@
 name = "html-languageservice"
 version = "0.2.1"
 edition = "2021"
+license = "MIT"
 license-file = "LICENSE"
 description = "The basics of an HTML language server."
 homepage = "https://github.com/ren-wei/html-languageservice"
