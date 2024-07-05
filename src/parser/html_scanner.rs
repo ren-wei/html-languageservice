@@ -555,7 +555,7 @@ impl MultiLineStream<'_> {
     }
 
     pub fn advance_until_chars(&mut self, ch: Vec<u8>) -> bool {
-        while self.position + ch.len() < self.source.len() {
+        while self.position + ch.len() <= self.source.len() {
             let mut same = true;
             for i in 0..ch.len() {
                 if ch[i] != self.source.bytes().nth(self.position + i).unwrap() {
