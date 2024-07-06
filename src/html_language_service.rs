@@ -31,10 +31,10 @@ pub struct HTMLLanguageService {
 }
 
 impl HTMLLanguageService {
-    pub fn new(options: HTMLLanguageServiceOptions) -> HTMLLanguageService {
+    pub fn new(options: &HTMLLanguageServiceOptions) -> HTMLLanguageService {
         HTMLLanguageService {
-            html_completion: HTMLCompletion::new(&options),
-            html_hover: HTMLHover::new(&options),
+            html_completion: HTMLCompletion::new(options),
+            html_hover: HTMLHover::new(options),
         }
     }
 

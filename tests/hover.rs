@@ -17,7 +17,7 @@ async fn assert_hover(
     let document = FullTextDocument::new("html".to_string(), 0, value);
 
     let position = document.position_at(offset as u32);
-    let ls = HTMLLanguageService::new(HTMLLanguageServiceOptions::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
     let data_manager = HTMLDataManager::default();
     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
     let hover = ls
@@ -52,9 +52,9 @@ async fn assert_hover_range(
 
     let position = document.position_at(offset as u32);
     let ls = if let Some(ls_options) = ls_options {
-        HTMLLanguageService::new(ls_options)
+        HTMLLanguageService::new(&ls_options)
     } else {
-        HTMLLanguageService::new(HTMLLanguageServiceOptions::default())
+        HTMLLanguageService::new(&HTMLLanguageServiceOptions::default())
     };
 
     let data_manager = HTMLDataManager::default();

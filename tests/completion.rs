@@ -21,7 +21,7 @@ async fn test_completion_for(
     } else {
         HTMLLanguageServiceOptions::default()
     };
-    let ls = HTMLLanguageService::new(ls_options);
+    let ls = HTMLLanguageService::new(&ls_options);
 
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
@@ -169,7 +169,7 @@ fn test_tag_completion(value: &str, expected: Option<String>) {
     let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
 
     let ls_options = HTMLLanguageServiceOptions::default();
-    let ls = HTMLLanguageService::new(ls_options);
+    let ls = HTMLLanguageService::new(&ls_options);
 
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
