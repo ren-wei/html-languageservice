@@ -64,7 +64,7 @@ fn assert_node_before(input: &str, offset: usize, expected_tag: Option<&str>) {
 
 fn assert_find_token_type_in_node(input: &str, offset: usize, expected_token_type: TokenType) {
     let document = parse(input);
-    let node = document.find_node_at(offset);
+    let node = document.find_node_at(offset, &mut vec![]);
     println!("{:#?}", node);
     if let Some(node) = node {
         assert_eq!(

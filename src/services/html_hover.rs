@@ -46,7 +46,7 @@ impl HTMLHover {
         data_manager: &HTMLDataManager,
     ) -> Option<Hover> {
         let offset = document.offset_at(*position) as usize;
-        let node = html_document.find_node_at(offset);
+        let node = html_document.find_node_at(offset, &mut vec![]);
         let text = document.get_content(None);
 
         if node.is_none() {

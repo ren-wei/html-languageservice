@@ -12,7 +12,7 @@ pub fn find_document_highlights(
     html_document: &HTMLDocument,
 ) -> Vec<DocumentHighlight> {
     let offset = document.offset_at(*position);
-    if let Some(node) = html_document.find_node_at(offset as usize) {
+    if let Some(node) = html_document.find_node_at(offset as usize, &mut vec![]) {
         if node.tag.is_none() {
             return vec![];
         }

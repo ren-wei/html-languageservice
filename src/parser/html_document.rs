@@ -115,7 +115,11 @@ impl Node {
         node
     }
 
-    pub fn find_node_at<'a>(node: &'a Node, offset: usize) -> &'a Node {
+    pub fn find_node_at<'a>(
+        node: &'a Node,
+        offset: usize,
+        parent_list: &mut Vec<&'a Node>,
+    ) -> &'a Node {
         let mut idx = node.children.len();
         for (i, child) in node.children.iter().enumerate() {
             if offset < child.start {
@@ -127,7 +131,8 @@ impl Node {
         if idx > 0 {
             let child = &node.children[idx - 1];
             if offset >= child.start && offset < child.end {
-                return Node::find_node_at(child, offset);
+                parent_list.push(&node);
+                return Node::find_node_at(child, offset, parent_list);
             }
         }
         node
@@ -218,7 +223,12 @@ impl HTMLDocument {
         None
     }
 
-    pub fn find_node_at<'a>(&'a self, offset: usize) -> Option<&'a Node> {
+    /// `parent_list` is a list where the previous node is the parent node of the latter node
+    pub fn find_node_at<'a>(
+        &'a self,
+        offset: usize,
+        parent_list: &mut Vec<&'a Node>,
+    ) -> Option<&'a Node> {
         let mut idx = self.roots.len();
         for (i, child) in self.roots.iter().enumerate() {
             if offset < child.start {
@@ -230,7 +240,7 @@ impl HTMLDocument {
         if idx > 0 {
             let child = &self.roots[idx - 1];
             if offset >= child.start && offset < child.end {
-                return Some(Node::find_node_at(child, offset));
+                return Some(Node::find_node_at(child, offset, parent_list));
             }
         }
         None
