@@ -124,7 +124,7 @@ impl Scanner<'_> {
                         }
                         if self
                             .stream
-                            .advance_if_regexp(Regex::new(r"^!doctype").unwrap())
+                            .advance_if_regexp(Regex::new(r"^!(?i)doctype").unwrap())
                             != ""
                         {
                             self.state = ScannerState::WithinDoctype;
