@@ -4,13 +4,13 @@ use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
-use crate::services::html_folding;
 #[cfg(feature = "experimental")]
 use crate::services::html_formatter;
 use crate::services::html_highlight;
 use crate::services::html_hover::HTMLHover;
 use crate::services::html_links;
 use crate::services::html_symbols;
+use crate::services::{html_folding, html_selection_range};
 #[cfg(feature = "experimental")]
 use crate::HTMLFormatConfiguration;
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
 };
 use lsp_types::{
     CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
-    SymbolInformation, Url,
+    SelectionRange, SymbolInformation, Url,
 };
 #[cfg(feature = "experimental")]
 use lsp_types::{Range, TextEdit};
@@ -163,5 +163,13 @@ impl HTMLLanguageService {
         data_manager: &HTMLDataManager,
     ) -> Vec<FoldingRange> {
         html_folding::get_folding_ranges(document, context, data_manager)
+    }
+
+    pub fn get_selection_ranges(
+        document: &FullTextDocument,
+        positions: &Vec<Position>,
+        html_document: &HTMLDocument,
+    ) -> Vec<SelectionRange> {
+        html_selection_range::get_selection_ranges(document, positions, html_document)
     }
 }
