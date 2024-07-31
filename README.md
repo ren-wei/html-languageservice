@@ -14,7 +14,7 @@ The basics of an HTML language server.
 - [x] findDocumentLinks
 - [x] findDocumentSymbols
 - [x] getFoldingRanges
-- [ ] getSelectionRanges
+- [x] getSelectionRanges
 - [x] quoteComplete
 - [x] tagComplete
 - [ ] rename
