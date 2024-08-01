@@ -127,13 +127,12 @@ fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfig
     let mut n_chars = 0;
     let tab_size = options.tab_size as usize;
     let length = content.len();
-    let mut content = content.bytes();
-    content.nth(i - 1);
+    let mut chars = content.chars().skip(i - 1);
     while i < length {
-        let ch = content.next().unwrap();
-        if ch == b' ' {
+        let ch = chars.next().unwrap();
+        if ch == ' ' {
             n_chars += 1;
-        } else if ch == b'\t' {
+        } else if ch == '\t' {
             n_chars += tab_size;
         } else {
             break;
@@ -145,14 +144,14 @@ fn compute_indent_level(content: &str, offset: usize, options: &HTMLFormatConfig
 
 #[cfg(feature = "experimental")]
 fn is_eol(text: &str, offset: usize) -> bool {
-    text.bytes().nth(offset).is_some_and(|c| c == b'\n')
+    text.chars().nth(offset).is_some_and(|c| c == '\n')
 }
 
 #[cfg(feature = "experimental")]
 fn is_whitespace(text: &str, offset: usize) -> bool {
-    text.bytes()
+    text.chars()
         .nth(offset)
-        .is_some_and(|c| vec![b' ', b'\t'].contains(&c))
+        .is_some_and(|c| vec![' ', '\t'].contains(&c))
 }
 
 pub struct HTMLFormatConfiguration {

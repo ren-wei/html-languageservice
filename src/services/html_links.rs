@@ -52,7 +52,7 @@ pub fn find_document_links(
                                 uri,
                                 document,
                                 document_context,
-                                attribute_value,
+                                &attribute_value,
                                 scanner.get_token_offset(),
                                 scanner.get_token_end(),
                                 &base,
@@ -61,7 +61,7 @@ pub fn find_document_links(
                             }
                         }
                         if in_base_tag && base.is_none() {
-                            base = Some(normalize_ref(attribute_value).to_string());
+                            base = Some(normalize_ref(&attribute_value).to_string());
                             if base.as_ref().is_some_and(|base| base.len() > 0) {
                                 if let Some(uri) = document_context
                                     .resolve_reference(base.as_ref().unwrap(), uri.as_str())
@@ -73,7 +73,8 @@ pub fn find_document_links(
                         in_base_tag = false;
                         last_attribute_name = None;
                     } else if attribute_name == "id" {
-                        let id = normalize_ref(scanner.get_token_text());
+                        let text = scanner.get_token_text();
+                        let id = normalize_ref(&text);
                         id_locations.insert(id.to_string(), scanner.get_token_offset());
                     }
                 }
@@ -143,11 +144,10 @@ fn create_link(
 
 fn normalize_ref(url: &str) -> &str {
     if url.len() > 0 {
-        let url_bytes = url.as_bytes();
-        let first = url_bytes[0];
-        let last = url_bytes[url_bytes.len() - 1];
-        if first == last && (first == b'\'' || first == b'"') {
-            return &url[1..url_bytes.len() - 1];
+        let first = url.chars().next();
+        let last = url.chars().next_back();
+        if first == last && (first == Some('\'') || first == Some('"')) {
+            return &url[1..url.len() - 1];
         }
     }
     url
@@ -225,9 +225,9 @@ fn validate_and_clean_uri(uri_str: &str, document_uri: &Url) -> Option<Url> {
             && uri.fragment().is_some()
             && !(uri_str.starts_with(&document_uri.to_string())
                 && uri_str
-                    .bytes()
-                    .nth(document_uri.to_string().len())
-                    .is_some_and(|code| code == b'#'))
+                    .chars()
+                    .nth(document_uri.to_string().chars().count())
+                    .is_some_and(|c| c == '#'))
         {
             uri.set_fragment(None);
             return Some(uri);

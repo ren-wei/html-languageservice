@@ -67,7 +67,7 @@ pub fn get_folding_ranges(
                 let text = scanner.get_token_text();
                 if let Some(caps) = Regex::new(r"^\s*#(region\b)|(endregion\b)")
                     .unwrap()
-                    .captures(text)
+                    .captures(&text)
                 {
                     if caps.get(1).is_some() {
                         stack.push((start_line, String::new()));

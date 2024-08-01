@@ -74,7 +74,9 @@ impl Scanner<'_> {
     }
 
     pub fn get_token_text(&self) -> &str {
-        &self.stream.get_source()[self.token_offset..self.get_token_end()]
+        let chars = self.stream.get_source().char_indices();
+        let (offset, _) = chars.skip(self.token_offset).next().unwrap();
+        &self.stream.source[offset..self.get_token_end()]
     }
 
     pub fn get_scanner_state(&self) -> ScannerState {
@@ -94,30 +96,30 @@ impl Scanner<'_> {
 
         match self.state {
             ScannerState::WithinComment => {
-                if self.stream.advance_if_chars(vec![_MIN, _MIN, _RAN]) {
+                if self.stream.advance_if_chars("-->") {
                     // -->
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::EndCommentTag, None);
                 }
-                self.stream.advance_until_chars(vec![_MIN, _MIN, _RAN]); // -->
+                self.stream.advance_until_chars("-->"); // -->
                 return self.finish_token(offset, TokenType::Comment, None);
             }
 
             ScannerState::WithinDoctype => {
-                if self.stream.advance_if_char(_RAN) {
+                if self.stream.advance_if_char('>') {
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::EndDoctypeTag, None);
                 }
-                self.stream.advance_until_char(_RAN); // >
+                self.stream.advance_until_char('>'); // >
                 return self.finish_token(offset, TokenType::Doctype, None);
             }
 
             ScannerState::WithinContent => {
-                if self.stream.advance_if_char(_LAN) {
+                if self.stream.advance_if_char('<') {
                     // <
-                    if !self.stream.eos() && self.stream.peek_char(0) == _BNG {
+                    if !self.stream.eos() && self.stream.peek_char(0) == Some('!') {
                         // !
-                        if self.stream.advance_if_chars(vec![_BNG, _MIN, _MIN]) {
+                        if self.stream.advance_if_chars("!--") {
                             // <!--
                             self.state = ScannerState::WithinComment;
                             return self.finish_token(offset, TokenType::StartCommentTag, None);
@@ -131,7 +133,7 @@ impl Scanner<'_> {
                             return self.finish_token(offset, TokenType::StartDoctypeTag, None);
                         }
                     }
-                    if self.stream.advance_if_char(_FSL) {
+                    if self.stream.advance_if_char('/') {
                         // /
                         self.state = ScannerState::AfterOpeningEndTag;
                         return self.finish_token(offset, TokenType::EndTagOpen, None);
@@ -139,7 +141,7 @@ impl Scanner<'_> {
                     self.state = ScannerState::AfterOpeningStartTag;
                     return self.finish_token(offset, TokenType::StartTagOpen, None);
                 }
-                self.stream.advance_until_char(_LAN);
+                self.stream.advance_until_char('<');
                 return self.finish_token(offset, TokenType::Content, None);
             }
 
@@ -158,7 +160,7 @@ impl Scanner<'_> {
                     );
                 }
                 self.state = ScannerState::WithinEndTag;
-                self.stream.advance_until_char(_RAN);
+                self.stream.advance_until_char('>');
                 if offset < self.stream.pos() {
                     return self.finish_token(
                         offset,
@@ -174,12 +176,12 @@ impl Scanner<'_> {
                     // white space is valid here
                     return self.finish_token(offset, TokenType::Whitespace, None);
                 }
-                if self.stream.advance_if_char(_RAN) {
+                if self.stream.advance_if_char('>') {
                     // >
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::EndTagClose, None);
                 }
-                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == _LAN {
+                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some('<') {
                     // <
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(
@@ -209,7 +211,7 @@ impl Scanner<'_> {
                     );
                 }
                 self.state = ScannerState::WithinTag;
-                self.stream.advance_until_char(_RAN);
+                self.stream.advance_until_char('>');
                 if offset < self.stream.pos() {
                     return self.finish_token(
                         offset,
@@ -233,12 +235,12 @@ impl Scanner<'_> {
                         return self.finish_token(offset, TokenType::AttributeName, None);
                     }
                 }
-                if self.stream.advance_if_chars(vec![_FSL, _RAN]) {
+                if self.stream.advance_if_chars("/>") {
                     // />
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::StartTagSelfClose, None);
                 }
-                if self.stream.advance_if_char(_RAN) {
+                if self.stream.advance_if_char('>') {
                     // >
                     if self.last_tag == Some("script".to_string()) {
                         if self.last_type_value.is_some() {
@@ -254,7 +256,7 @@ impl Scanner<'_> {
                     }
                     return self.finish_token(offset, TokenType::StartTagClose, None);
                 }
-                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == _LAN {
+                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some('<') {
                     // <
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(
@@ -277,7 +279,7 @@ impl Scanner<'_> {
                     return self.finish_token(offset, TokenType::Whitespace, None);
                 }
 
-                if self.stream.advance_if_char(_EQS) {
+                if self.stream.advance_if_char('=') {
                     self.state = ScannerState::BeforeAttributeValue;
                     return self.finish_token(offset, TokenType::DelimiterAssign, None);
                 }
@@ -296,7 +298,7 @@ impl Scanner<'_> {
                     .advance_if_regexp(Regex::new(r#"^[^\s"'`=<>]+"#).unwrap());
                 if attribute_value.len() > 0 {
                     let mut is_go_back = false;
-                    if cur_char == _RAN && prev_char == _FSL {
+                    if cur_char == Some('>') && prev_char == Some('/') {
                         // <foo bar=http://foo/>
                         is_go_back = true;
                         attribute_value = &attribute_value[..attribute_value.len() - 1];
@@ -305,7 +307,7 @@ impl Scanner<'_> {
                         let s = attribute_value.to_string();
                         self.last_type_value = if s.len() != 0 { Some(s) } else { None };
                     }
-                    let attribute_value_len = attribute_value.len();
+                    let attribute_value_len = attribute_value.chars().count();
                     if is_go_back {
                         self.stream.go_back(1);
                     }
@@ -316,23 +318,26 @@ impl Scanner<'_> {
                     }
                 }
                 let ch = self.stream.peek_char(0);
-                if ch == _SQO || ch == _DQO {
-                    self.stream.advance(1); // consume quote
-                    if self.stream.advance_until_char(ch) {
+                if let Some(ch) = ch {
+                    if ch == '\'' || ch == '"' {
                         self.stream.advance(1); // consume quote
+                        if self.stream.advance_until_char(ch) {
+                            self.stream.advance(1); // consume quote
+                        }
+                        if self.last_attribute_name == Some("type".to_string()) {
+                            let s =
+                                self.stream.get_source()[if offset + 1 > self.stream.pos() - 1 {
+                                    self.stream.pos() - 1..offset + 1
+                                } else {
+                                    offset + 1..self.stream.pos() - 1
+                                }]
+                                .to_string();
+                            self.last_type_value = if s.len() != 0 { Some(s) } else { None }
+                        }
+                        self.state = ScannerState::WithinTag;
+                        self.has_space_after_tag = false;
+                        return self.finish_token(offset, TokenType::AttributeValue, None);
                     }
-                    if self.last_attribute_name == Some("type".to_string()) {
-                        let s = self.stream.get_source()[if offset + 1 > self.stream.pos() - 1 {
-                            self.stream.pos() - 1..offset + 1
-                        } else {
-                            offset + 1..self.stream.pos() - 1
-                        }]
-                        .to_string();
-                        self.last_type_value = if s.len() != 0 { Some(s) } else { None }
-                    }
-                    self.state = ScannerState::WithinTag;
-                    self.has_space_after_tag = false;
-                    return self.finish_token(offset, TokenType::AttributeValue, None);
                 }
                 self.state = ScannerState::WithinTag;
                 self.has_space_after_tag = false;
@@ -365,7 +370,7 @@ impl Scanner<'_> {
                         if script_state == 3 {
                             script_state = 2;
                         } else {
-                            let length = m.len();
+                            let length = m.chars().count();
                             self.stream.go_back(length); // to the beginning of the closing tag
                             break;
                         }
@@ -441,7 +446,7 @@ impl MultiLineStream<'_> {
     pub fn new<'a>(source: &'a str, position: usize) -> MultiLineStream<'a> {
         MultiLineStream {
             source,
-            len: source.len(),
+            len: source.chars().count(),
             position,
         }
     }
@@ -458,10 +463,6 @@ impl MultiLineStream<'_> {
         self.position
     }
 
-    pub fn _go_back_to(&mut self, pos: usize) {
-        self.position = pos;
-    }
-
     pub fn go_back(&mut self, n: usize) {
         self.position -= n;
     }
@@ -471,33 +472,20 @@ impl MultiLineStream<'_> {
     }
 
     pub fn go_to_end(&mut self) {
-        self.position = self.source.len();
+        self.position = self.len;
     }
 
-    pub fn _next_char(&mut self) -> u8 {
-        if let Some(char) = self.source.bytes().nth(self.position) {
-            self.position += 1;
-            char
-        } else {
-            0
-        }
-    }
-
-    pub fn peek_char(&self, n: isize) -> u8 {
+    pub fn peek_char(&self, n: isize) -> Option<char> {
         let index = if n >= 0 {
             self.position + n as usize
         } else {
             self.position - (-n) as usize
         };
-        if let Some(char) = self.source.bytes().nth(index) {
-            char
-        } else {
-            0
-        }
+        self.source.chars().nth(index)
     }
 
-    pub fn advance_if_char(&mut self, ch: u8) -> bool {
-        if let Some(char) = self.source.bytes().nth(self.position) {
+    pub fn advance_if_char(&mut self, ch: char) -> bool {
+        if let Some(char) = self.source.chars().nth(self.position) {
             if char == ch {
                 self.position += 1;
                 return true;
@@ -506,18 +494,21 @@ impl MultiLineStream<'_> {
         false
     }
 
-    pub fn advance_if_chars(&mut self, ch: Vec<u8>) -> bool {
-        if self.position + ch.len() > self.source.len() {
+    pub fn advance_if_chars(&mut self, ch: &str) -> bool {
+        let count = ch.chars().count();
+        if self.position + count > self.len {
             return false;
         }
 
-        for i in 0..ch.len() {
-            if self.source.bytes().nth(self.position + i).unwrap() != ch[i] {
+        let mut source_chars = self.source.chars().skip(self.position);
+
+        for c in ch.chars() {
+            if Some(c) != source_chars.next() {
                 return false;
             }
         }
 
-        self.advance(ch.len());
+        self.advance(ch.chars().count());
         true
     }
 
@@ -544,9 +535,9 @@ impl MultiLineStream<'_> {
         }
     }
 
-    pub fn advance_until_char(&mut self, ch: u8) -> bool {
-        while self.position < self.source.len() {
-            if self.source.bytes().nth(self.position).unwrap() == ch {
+    pub fn advance_until_char(&mut self, ch: char) -> bool {
+        while self.position < self.len {
+            if self.source.chars().nth(self.position).unwrap() == ch {
                 return true;
             }
             self.advance(1);
@@ -554,11 +545,12 @@ impl MultiLineStream<'_> {
         false
     }
 
-    pub fn advance_until_chars(&mut self, ch: Vec<u8>) -> bool {
-        while self.position + ch.len() <= self.source.len() {
+    pub fn advance_until_chars(&mut self, ch: &str) -> bool {
+        while self.position + ch.chars().count() <= self.len {
             let mut same = true;
-            for i in 0..ch.len() {
-                if ch[i] != self.source.bytes().nth(self.position + i).unwrap() {
+            let mut source_chars = self.source.chars().skip(self.position);
+            for c in ch.chars() {
+                if Some(c) != source_chars.next() {
                     same = false;
                     break;
                 }
@@ -573,37 +565,24 @@ impl MultiLineStream<'_> {
     }
 
     pub fn skip_whitespace(&mut self) -> bool {
-        let n = self.advance_while_char(|ch| vec![_WSP, _TAB, _NWL, _LFD, _CAR].contains(&ch));
+        let n = self.advance_while_char(|ch| {
+            vec![' ', '\t', '\n', char::from_u32(12).unwrap(), '\r'].contains(&ch)
+        });
         n > 0
     }
 
     pub fn advance_while_char<F>(&mut self, condition: F) -> usize
     where
-        F: Fn(u8) -> bool,
+        F: Fn(char) -> bool,
     {
         let pos_now = self.position;
-        while self.position < self.source.len()
-            && condition(self.source.bytes().nth(self.position).unwrap())
+        while self.position < self.len && condition(self.source.chars().nth(self.position).unwrap())
         {
             self.advance(1);
         }
         self.position - pos_now
     }
 }
-
-const _BNG: u8 = b'!';
-const _MIN: u8 = b'-';
-const _LAN: u8 = b'<';
-const _RAN: u8 = b'>';
-const _FSL: u8 = b'/';
-const _EQS: u8 = b'=';
-const _DQO: u8 = b'"';
-const _SQO: u8 = b'\'';
-const _NWL: u8 = b'\n';
-const _CAR: u8 = b'\r';
-const _LFD: u8 = 12;
-const _WSP: u8 = b' ';
-const _TAB: u8 = b'\t';
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum TokenType {

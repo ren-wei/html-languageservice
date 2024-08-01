@@ -389,17 +389,17 @@ impl HTMLHover {
     }
 
     fn get_entity_range(&self, context: &mut HoverContext) -> Option<Range> {
-        let mut k: isize = context.offset as isize - 1;
+        let mut k = context.offset;
         let mut character_start = context.position.character;
 
         let text = context.document.get_content(None);
 
-        while k >= 0 && is_letter_or_digit(text, k as usize) {
+        while k > 0 && is_letter_or_digit(text, k - 1) {
             k -= 1;
             character_start -= 1;
         }
 
-        let mut n = (k + 1) as usize;
+        let mut n = k;
         let mut character_end = character_start;
 
         while is_letter_or_digit(text, n) {
@@ -407,8 +407,8 @@ impl HTMLHover {
             character_end += 1;
         }
 
-        if k >= 0 && text.as_bytes()[k as usize] == b'&' {
-            return if text.as_bytes()[n] == b';' {
+        if k > 0 && text.chars().nth(k - 1) == Some('&') {
+            return if text.chars().nth(n) == Some(';') {
                 Some(Range {
                     start: Position {
                         line: context.position.line,
@@ -488,11 +488,11 @@ impl HTMLHover {
             return Regex::new(r#"['"]"#).unwrap().replace(s, "").to_string();
         }
 
-        if s.as_bytes()[0] == b'\'' || s.as_bytes()[0] == b'"' {
+        if s.chars().next() == Some('\'') || s.chars().next() == Some('"') {
             s = &s[1..];
         }
 
-        if s.as_bytes()[s.len() - 1] == b'\'' || s.as_bytes()[s.len() - 1] == b'"' {
+        if s.chars().next_back() == Some('\'') || s.chars().next_back() == Some('"') {
             s = &s[..s.len() - 1];
         }
 
