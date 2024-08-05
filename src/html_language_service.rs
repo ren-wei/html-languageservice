@@ -6,11 +6,11 @@ use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
 #[cfg(feature = "experimental")]
 use crate::services::html_formatter;
-use crate::services::html_highlight;
 use crate::services::html_hover::HTMLHover;
 use crate::services::html_links;
 use crate::services::html_symbols;
 use crate::services::{html_folding, html_selection_range};
+use crate::services::{html_highlight, html_rename};
 #[cfg(feature = "experimental")]
 use crate::HTMLFormatConfiguration;
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
 };
 use lsp_types::{
     CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
-    SelectionRange, SymbolInformation, Url,
+    SelectionRange, SymbolInformation, Url, WorkspaceEdit,
 };
 #[cfg(feature = "experimental")]
 use lsp_types::{Range, TextEdit};
@@ -171,5 +171,15 @@ impl HTMLLanguageService {
         html_document: &HTMLDocument,
     ) -> Vec<SelectionRange> {
         html_selection_range::get_selection_ranges(document, positions, html_document)
+    }
+
+    pub fn do_rename(
+        uri: Url,
+        document: &FullTextDocument,
+        position: Position,
+        new_name: &str,
+        html_document: &HTMLDocument,
+    ) -> Option<WorkspaceEdit> {
+        html_rename::do_rename(uri, document, position, new_name, html_document)
     }
 }
