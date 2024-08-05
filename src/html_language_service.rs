@@ -16,12 +16,12 @@ use crate::HTMLFormatConfiguration;
 use crate::{
     CompletionConfiguration, DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings,
 };
+#[cfg(feature = "experimental")]
+use lsp_types::TextEdit;
 use lsp_types::{
     CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
     Range, SelectionRange, SymbolInformation, Url, WorkspaceEdit,
 };
-#[cfg(feature = "experimental")]
-use lsp_types::{Range, TextEdit};
 
 use lsp_textdocument::FullTextDocument;
 
