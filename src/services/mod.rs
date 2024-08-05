@@ -3,6 +3,7 @@ pub(crate) mod html_folding;
 pub(crate) mod html_formatter;
 pub(crate) mod html_highlight;
 pub(crate) mod html_hover;
+pub(crate) mod html_linked_editing;
 pub(crate) mod html_links;
 pub(crate) mod html_matching_tag_position;
 pub(crate) mod html_rename;

@@ -7,9 +7,9 @@ use crate::services::html_completion::HTMLCompletion;
 #[cfg(feature = "experimental")]
 use crate::services::html_formatter;
 use crate::services::html_hover::HTMLHover;
-use crate::services::html_symbols;
 use crate::services::{html_folding, html_selection_range};
 use crate::services::{html_highlight, html_rename};
+use crate::services::{html_linked_editing, html_symbols};
 use crate::services::{html_links, html_matching_tag_position};
 #[cfg(feature = "experimental")]
 use crate::HTMLFormatConfiguration;
@@ -18,7 +18,7 @@ use crate::{
 };
 use lsp_types::{
     CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
-    SelectionRange, SymbolInformation, Url, WorkspaceEdit,
+    Range, SelectionRange, SymbolInformation, Url, WorkspaceEdit,
 };
 #[cfg(feature = "experimental")]
 use lsp_types::{Range, TextEdit};
@@ -189,5 +189,13 @@ impl HTMLLanguageService {
         html_document: &HTMLDocument,
     ) -> Option<Position> {
         html_matching_tag_position::find_matching_tag_position(document, position, html_document)
+    }
+
+    pub fn find_linked_editing_ranges(
+        document: &FullTextDocument,
+        position: Position,
+        html_document: &HTMLDocument,
+    ) -> Option<Vec<Range>> {
+        html_linked_editing::find_linked_editing_ranges(document, position, html_document)
     }
 }
