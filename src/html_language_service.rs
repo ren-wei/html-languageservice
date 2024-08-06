@@ -19,26 +19,32 @@ use crate::services::html_highlight;
 use crate::services::html_hover::HTMLHover;
 #[cfg(feature = "linked_editing")]
 use crate::services::html_linked_editing;
+#[cfg(feature = "links")]
+use crate::services::html_links;
+use crate::services::html_matching_tag_position;
 use crate::services::html_rename;
 use crate::services::html_selection_range;
 use crate::services::html_symbols;
-use crate::services::{html_links, html_matching_tag_position};
 
 #[cfg(feature = "formatter")]
 use crate::HTMLFormatConfiguration;
 
 #[cfg(feature = "completion")]
 use crate::CompletionConfiguration;
+#[cfg(any(feature = "formatter", feature = "links"))]
+use crate::DocumentContext;
 #[cfg(feature = "folding")]
 use crate::FoldingRangeContext;
+use crate::HTMLDataManager;
 #[cfg(feature = "hover")]
 use crate::HoverSettings;
-use crate::{DocumentContext, HTMLDataManager};
 
 #[cfg(feature = "completion")]
 use lsp_types::CompletionList;
 #[cfg(feature = "highlight")]
 use lsp_types::DocumentHighlight;
+#[cfg(feature = "links")]
+use lsp_types::DocumentLink;
 #[cfg(feature = "folding")]
 use lsp_types::FoldingRange;
 #[cfg(feature = "hover")]
@@ -47,9 +53,7 @@ use lsp_types::Hover;
 use lsp_types::Range;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
-use lsp_types::{
-    DocumentLink, DocumentSymbol, Position, SelectionRange, SymbolInformation, Url, WorkspaceEdit,
-};
+use lsp_types::{DocumentSymbol, Position, SelectionRange, SymbolInformation, Url, WorkspaceEdit};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -174,6 +178,7 @@ impl HTMLLanguageService {
         html_highlight::find_document_highlights(document, position, html_document)
     }
 
+    #[cfg(feature = "links")]
     pub fn find_document_links(
         uri: &Url,
         document: &FullTextDocument,

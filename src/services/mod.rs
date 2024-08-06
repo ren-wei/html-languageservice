@@ -10,6 +10,7 @@ pub(crate) mod html_highlight;
 pub(crate) mod html_hover;
 #[cfg(feature = "linked_editing")]
 pub(crate) mod html_linked_editing;
+#[cfg(feature = "links")]
 pub(crate) mod html_links;
 pub(crate) mod html_matching_tag_position;
 pub(crate) mod html_rename;

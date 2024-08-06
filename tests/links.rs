@@ -1,9 +1,14 @@
+#[cfg(feature = "links")]
 use html_languageservice::{DocumentContext, HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "links")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "links")]
 use lsp_types::{DocumentLink, Position, Range, Url};
 
+#[cfg(feature = "links")]
 struct LinkDocumentContent;
 
+#[cfg(feature = "links")]
 impl DocumentContext for LinkDocumentContent {
     fn resolve_reference(&self, reference: &str, base: &str) -> Option<String> {
         if let Ok(uri) = Url::parse(base) {
@@ -18,6 +23,7 @@ impl DocumentContext for LinkDocumentContent {
     }
 }
 
+#[cfg(feature = "links")]
 fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&str>) {
     let language_id = if let Some(index) = model_url.rfind(".") {
         let lang = model_url[index..].to_string();
@@ -48,6 +54,7 @@ fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&st
     );
 }
 
+#[cfg(feature = "links")]
 fn test_link_detection(value: &str, expected_links: Vec<DocumentLink>) {
     let uri = Url::parse("file:///test/data/abc/test.html").unwrap();
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
@@ -62,6 +69,7 @@ fn test_link_detection(value: &str, expected_links: Vec<DocumentLink>) {
     assert_eq!(links, expected_links);
 }
 
+#[cfg(feature = "links")]
 #[test]
 fn link_creation() {
     test_link_creation("http://model/1.html", "javascript:void;", None);
@@ -182,6 +190,7 @@ fn link_creation() {
     );
 }
 
+#[cfg(feature = "links")]
 #[test]
 fn link_detection() {
     test_link_detection(
@@ -317,6 +326,7 @@ fn link_detection() {
     );
 }
 
+#[cfg(feature = "links")]
 #[test]
 fn local_targets() {
     test_link_detection(
