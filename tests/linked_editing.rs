@@ -1,6 +1,9 @@
+#[cfg(feature = "linked_editing")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "linked_editing")]
 use lsp_textdocument::FullTextDocument;
 
+#[cfg(feature = "linked_editing")]
 fn test_linked_editing(content: &str, expected: Vec<(usize, &str)>) {
     let offset = content.find('|').unwrap();
     let value = format!("{}{}", &content[..offset], &content[offset + 1..]);
@@ -38,6 +41,7 @@ fn test_linked_editing(content: &str, expected: Vec<(usize, &str)>) {
     assert_eq!(actual, expected);
 }
 
+#[cfg(feature = "linked_editing")]
 #[test]
 fn linked_editing() {
     test_linked_editing("|<div></div>", vec![]);

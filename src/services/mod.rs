@@ -8,6 +8,7 @@ pub(crate) mod html_formatter;
 pub(crate) mod html_highlight;
 #[cfg(feature = "hover")]
 pub(crate) mod html_hover;
+#[cfg(feature = "linked_editing")]
 pub(crate) mod html_linked_editing;
 pub(crate) mod html_links;
 pub(crate) mod html_matching_tag_position;

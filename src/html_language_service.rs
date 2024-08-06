@@ -17,9 +17,11 @@ use crate::services::html_formatter;
 use crate::services::html_highlight;
 #[cfg(feature = "hover")]
 use crate::services::html_hover::HTMLHover;
+#[cfg(feature = "linked_editing")]
+use crate::services::html_linked_editing;
 use crate::services::html_rename;
 use crate::services::html_selection_range;
-use crate::services::{html_linked_editing, html_symbols};
+use crate::services::html_symbols;
 use crate::services::{html_links, html_matching_tag_position};
 
 #[cfg(feature = "formatter")]
@@ -41,11 +43,12 @@ use lsp_types::DocumentHighlight;
 use lsp_types::FoldingRange;
 #[cfg(feature = "hover")]
 use lsp_types::Hover;
+#[cfg(any(feature = "formatter", feature = "linked_editing"))]
+use lsp_types::Range;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
-    DocumentLink, DocumentSymbol, Position, Range, SelectionRange, SymbolInformation, Url,
-    WorkspaceEdit,
+    DocumentLink, DocumentSymbol, Position, SelectionRange, SymbolInformation, Url, WorkspaceEdit,
 };
 
 use lsp_textdocument::FullTextDocument;
@@ -230,6 +233,7 @@ impl HTMLLanguageService {
         html_matching_tag_position::find_matching_tag_position(document, position, html_document)
     }
 
+    #[cfg(feature = "linked_editing")]
     pub fn find_linked_editing_ranges(
         document: &FullTextDocument,
         position: Position,
