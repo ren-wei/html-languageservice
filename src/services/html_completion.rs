@@ -22,7 +22,7 @@ use crate::{
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, ICompletionParticipant},
     utils::{markdown, strings},
-    HTMLLanguageServiceOptions,
+    DocumentContext, HTMLLanguageServiceOptions,
 };
 
 lazy_static! {
