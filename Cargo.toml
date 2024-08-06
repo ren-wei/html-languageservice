@@ -20,6 +20,7 @@ hover = []
 linked_editing = []
 links = []
 matching_tag_position = []
+rename = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

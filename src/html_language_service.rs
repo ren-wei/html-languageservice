@@ -23,6 +23,7 @@ use crate::services::html_linked_editing;
 use crate::services::html_links;
 #[cfg(feature = "matching_tag_position")]
 use crate::services::html_matching_tag_position;
+#[cfg(feature = "rename")]
 use crate::services::html_rename;
 use crate::services::html_selection_range;
 use crate::services::html_symbols;
@@ -54,7 +55,9 @@ use lsp_types::Hover;
 use lsp_types::Range;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
-use lsp_types::{DocumentSymbol, Position, SelectionRange, SymbolInformation, Url, WorkspaceEdit};
+#[cfg(feature = "rename")]
+use lsp_types::WorkspaceEdit;
+use lsp_types::{DocumentSymbol, Position, SelectionRange, SymbolInformation, Url};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -221,6 +224,7 @@ impl HTMLLanguageService {
         html_selection_range::get_selection_ranges(document, positions, html_document)
     }
 
+    #[cfg(feature = "rename")]
     pub fn do_rename(
         uri: Url,
         document: &FullTextDocument,

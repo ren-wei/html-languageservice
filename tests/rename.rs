@@ -1,7 +1,11 @@
+#[cfg(feature = "rename")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "rename")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "rename")]
 use lsp_types::{TextEdit, Url};
 
+#[cfg(feature = "rename")]
 fn test_rename(value: &str, new_name: &str, expected: &str) {
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
@@ -35,6 +39,7 @@ fn test_rename(value: &str, new_name: &str, expected: &str) {
     assert_eq!(new_content, expected);
 }
 
+#[cfg(feature = "rename")]
 fn test_no_rename(value: &str, new_name: &str) {
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
@@ -55,6 +60,7 @@ fn test_no_rename(value: &str, new_name: &str) {
     );
 }
 
+#[cfg(feature = "rename")]
 fn apply_edits(document: &FullTextDocument, edits: &Vec<TextEdit>) -> String {
     let content = document.get_content(None);
     let mut new_content = String::new();
@@ -69,6 +75,7 @@ fn apply_edits(document: &FullTextDocument, edits: &Vec<TextEdit>) -> String {
     new_content
 }
 
+#[cfg(feature = "rename")]
 #[test]
 fn rename_tag() {
     test_rename("<|div></div>", "h1", "<h1></h1>");
@@ -94,6 +101,7 @@ fn rename_tag() {
     test_no_rename(r#"<div id="foo"|></div>"#, "h1");
 }
 
+#[cfg(feature = "rename")]
 #[test]
 fn rename_self_closing_tag() {
     test_rename("<|br>", "h1", "<h1>");
@@ -101,11 +109,13 @@ fn rename_self_closing_tag() {
     test_rename("<|br />", "h1", "<h1 />");
 }
 
+#[cfg(feature = "rename")]
 #[test]
 fn rename_inner_tag() {
     test_rename("<div><|h1></h1></div>", "h2", "<div><h2></h2></div>");
 }
 
+#[cfg(feature = "rename")]
 #[test]
 fn rename_unmatched_tag() {
     test_rename("<div><|h1></div>", "h2", "<div><h2></div>");
