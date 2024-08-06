@@ -4,6 +4,7 @@ use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 #[cfg(feature = "completion")]
 use crate::participant::ICompletionParticipant;
+#[cfg(feature = "hover")]
 use crate::participant::IHoverParticipant;
 #[cfg(feature = "completion")]
 use crate::services::html_completion::HTMLCompletion;
@@ -13,6 +14,7 @@ use crate::services::html_folding;
 use crate::services::html_formatter;
 #[cfg(feature = "highlight")]
 use crate::services::html_highlight;
+#[cfg(feature = "hover")]
 use crate::services::html_hover::HTMLHover;
 use crate::services::html_rename;
 use crate::services::html_selection_range;
@@ -26,7 +28,9 @@ use crate::HTMLFormatConfiguration;
 use crate::CompletionConfiguration;
 #[cfg(feature = "folding")]
 use crate::FoldingRangeContext;
-use crate::{DocumentContext, HTMLDataManager, HoverSettings};
+#[cfg(feature = "hover")]
+use crate::HoverSettings;
+use crate::{DocumentContext, HTMLDataManager};
 
 #[cfg(feature = "completion")]
 use lsp_types::CompletionList;
@@ -34,10 +38,12 @@ use lsp_types::CompletionList;
 use lsp_types::DocumentHighlight;
 #[cfg(feature = "folding")]
 use lsp_types::FoldingRange;
+#[cfg(feature = "hover")]
+use lsp_types::Hover;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
-    DocumentLink, DocumentSymbol, Hover, Position, Range, SelectionRange, SymbolInformation, Url,
+    DocumentLink, DocumentSymbol, Position, Range, SelectionRange, SymbolInformation, Url,
     WorkspaceEdit,
 };
 
@@ -46,6 +52,7 @@ use lsp_textdocument::FullTextDocument;
 pub struct HTMLLanguageService {
     #[cfg(feature = "formatter")]
     html_completion: HTMLCompletion,
+    #[cfg(feature = "hover")]
     html_hover: HTMLHover,
 }
 
@@ -54,6 +61,7 @@ impl HTMLLanguageService {
         HTMLLanguageService {
             #[cfg(feature = "formatter")]
             html_completion: HTMLCompletion::new(options),
+            #[cfg(feature = "hover")]
             html_hover: HTMLHover::new(options),
         }
     }
@@ -122,6 +130,7 @@ impl HTMLLanguageService {
             .do_tag_complete(document, position, html_document, data_manager)
     }
 
+    #[cfg(feature = "hover")]
     pub async fn do_hover(
         &self,
         document: &FullTextDocument,
@@ -135,6 +144,7 @@ impl HTMLLanguageService {
             .await
     }
 
+    #[cfg(feature = "hover")]
     pub fn set_hover_participants(&mut self, hover_participants: Vec<Box<dyn IHoverParticipant>>) {
         self.html_hover.set_hover_participants(hover_participants);
     }

@@ -6,6 +6,7 @@ pub(crate) mod html_folding;
 pub(crate) mod html_formatter;
 #[cfg(feature = "highlight")]
 pub(crate) mod html_highlight;
+#[cfg(feature = "hover")]
 pub(crate) mod html_hover;
 pub(crate) mod html_linked_editing;
 pub(crate) mod html_links;

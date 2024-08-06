@@ -1,11 +1,15 @@
+#[cfg(feature = "hover")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "hover")]
 use lsp_types::{HoverContents, MarkupContent, MarkupKind};
 
+#[cfg(feature = "hover")]
 use html_languageservice::{
     language_facts::data_manager::HTMLDataManager, HTMLLanguageService, HTMLLanguageServiceOptions,
     HoverSettings,
 };
 
+#[cfg(feature = "hover")]
 async fn assert_hover(
     value: &str,
     expected_hover_content: Option<MarkupContent>,
@@ -38,6 +42,7 @@ async fn assert_hover(
     }
 }
 
+#[cfg(feature = "hover")]
 async fn assert_hover_range(
     value: &str,
     contents: HoverContents,
@@ -76,6 +81,7 @@ async fn assert_hover_range(
     }
 }
 
+#[cfg(feature = "hover")]
 #[tokio::test]
 async fn single() {
     let description_and_reference = "The html element represents the root of an HTML document."

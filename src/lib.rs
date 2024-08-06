@@ -16,14 +16,10 @@
 //!     // prepare
 //!     let document = FullTextDocument::new("html".to_string(), 1, "<div></div>".to_string());
 //!     let position = Position::new(0, 1);
-//!     // hover
+//!     // parse_html_document
 //!     let data_manager = HTMLDataManager::new(true, None);
 //!     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
-//!     let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
-//!     let result = ls
-//!         .do_hover(&document, &position, &html_document, None, &data_manager)
-//!         .await;
-//!     assert!(result.is_some());
+//!     assert!(html_document.roots.len() > 0);
 //! }
 //! ```
 
@@ -49,6 +45,7 @@ pub use services::html_folding::FoldingRangeContext;
 
 #[cfg(feature = "formatter")]
 pub use services::html_formatter::HTMLFormatConfiguration;
+#[cfg(feature = "hover")]
 pub use services::html_hover::HoverSettings;
 
 pub use html_language_service::HTMLLanguageService;
