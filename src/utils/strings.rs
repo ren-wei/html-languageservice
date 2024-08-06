@@ -1,3 +1,4 @@
+#[cfg(any(feature = "completion", feature = "hover"))]
 pub fn is_letter_or_digit(text: &str, index: usize) -> bool {
     let c = text.chars().nth(index);
     if let Some(c) = c {

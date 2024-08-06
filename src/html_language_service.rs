@@ -1,3 +1,4 @@
+#[cfg(any(feature = "completion", feature = "hover"))]
 use crate::html_language_types::HTMLLanguageServiceOptions;
 use crate::parser::html_document::HTMLDocument;
 use crate::parser::html_parse::HTMLParser;
@@ -57,9 +58,11 @@ pub struct HTMLLanguageService {
 }
 
 impl HTMLLanguageService {
-    pub fn new(options: &HTMLLanguageServiceOptions) -> HTMLLanguageService {
+    pub fn new(
+        #[cfg(any(feature = "completion", feature = "hover"))] options: &HTMLLanguageServiceOptions,
+    ) -> HTMLLanguageService {
         HTMLLanguageService {
-            #[cfg(feature = "formatter")]
+            #[cfg(feature = "completion")]
             html_completion: HTMLCompletion::new(options),
             #[cfg(feature = "hover")]
             html_hover: HTMLHover::new(options),

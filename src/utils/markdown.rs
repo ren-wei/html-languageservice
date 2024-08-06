@@ -1,5 +1,7 @@
+#[cfg(any(feature = "completion", feature = "hover"))]
 use crate::HTMLLanguageServiceOptions;
 
+#[cfg(any(feature = "completion", feature = "hover"))]
 pub fn does_support_markdown(ls_options: &HTMLLanguageServiceOptions) -> bool {
     if let Some(client_capabilities) = &ls_options.client_capabilities {
         if let Some(text_document) = &client_capabilities.text_document {
