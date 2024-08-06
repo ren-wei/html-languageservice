@@ -12,17 +12,16 @@ use crate::{
     language_facts::{
         data_manager::HTMLDataManager,
         data_provider::{
-            generate_documentation, GenerateDocumentationItem, GenerateDocumentationSetting,
-            IHTMLDataProvider,
+            self, GenerateDocumentationItem, GenerateDocumentationSetting, IHTMLDataProvider,
         },
     },
     parser::{
         html_document::{HTMLDocument, Node},
-        html_entities::get_entities,
+        html_entities,
         html_scanner::{Scanner, ScannerState, TokenType},
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, ICompletionParticipant},
-    utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
+    utils::{markdown, strings},
     HTMLLanguageServiceOptions,
 };
 
@@ -39,7 +38,7 @@ pub struct HTMLCompletion {
 impl HTMLCompletion {
     pub fn new(ls_options: &HTMLLanguageServiceOptions) -> HTMLCompletion {
         HTMLCompletion {
-            supports_markdown: does_support_markdown(&ls_options),
+            supports_markdown: markdown::does_support_markdown(&ls_options),
             completion_participants: vec![],
         }
     }
@@ -479,7 +478,7 @@ impl CompletionContext<'_> {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         for provider in &self.data_providers {
             for tag in provider.provide_tags() {
-                let documentation = generate_documentation(
+                let documentation = data_provider::generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
                         references: tag.references.clone(),
@@ -570,7 +569,7 @@ impl CompletionContext<'_> {
                 } else {
                     CompletionItemKind::VALUE
                 });
-                let documentation = generate_documentation(
+                let documentation = data_provider::generate_documentation(
                     GenerateDocumentationItem {
                         description: attr.description.clone(),
                         references: attr.references.clone(),
@@ -720,7 +719,7 @@ impl CompletionContext<'_> {
                     value.name.clone()
                 };
 
-                let documentation = generate_documentation(
+                let documentation = data_provider::generate_documentation(
                     GenerateDocumentationItem {
                         description: value.description.clone(),
                         references: value.references.clone(),
@@ -821,7 +820,7 @@ impl CompletionContext<'_> {
 
         for provider in &self.data_providers {
             for tag in provider.provide_tags() {
-                let documentation = generate_documentation(
+                let documentation = data_provider::generate_documentation(
                     GenerateDocumentationItem {
                         description: tag.description.clone(),
                         references: tag.references.clone(),
@@ -893,7 +892,7 @@ impl CompletionContext<'_> {
     fn collect_character_entity_proposals(&mut self) {
         let mut k: i128 = self.offset as i128 - 1;
         let mut character_start = self.position.character;
-        while k >= 0 && is_letter_or_digit(self.text, k as usize) {
+        while k >= 0 && strings::is_letter_or_digit(self.text, k as usize) {
             k -= 1;
             character_start -= 1;
         }
@@ -905,7 +904,7 @@ impl CompletionContext<'_> {
                 },
                 *self.position,
             );
-            let entities = get_entities();
+            let entities: &HashMap<_, _> = &html_entities::ENTITIES;
             for (entity, value) in entities {
                 if entity.ends_with(";") {
                     let label = format!("&{}", entity);

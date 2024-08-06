@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{Hover, HoverContents, MarkedString, MarkupContent, MarkupKind, Position, Range};
@@ -7,17 +9,16 @@ use crate::{
     language_facts::{
         data_manager::HTMLDataManager,
         data_provider::{
-            generate_documentation, GenerateDocumentationItem, GenerateDocumentationSetting,
-            IHTMLDataProvider,
+            self, GenerateDocumentationItem, GenerateDocumentationSetting, IHTMLDataProvider,
         },
     },
     parser::{
         html_document::HTMLDocument,
-        html_entities::get_entities,
+        html_entities,
         html_scanner::{Scanner, ScannerState, TokenType},
     },
     participant::{HtmlAttributeValueContext, HtmlContentContext, IHoverParticipant},
-    utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
+    utils::{markdown, strings},
     HTMLLanguageServiceOptions,
 };
 
@@ -33,7 +34,7 @@ pub struct HTMLHover {
 impl HTMLHover {
     pub fn new(ls_options: &HTMLLanguageServiceOptions) -> HTMLHover {
         HTMLHover {
-            supports_markdown: does_support_markdown(&ls_options),
+            supports_markdown: markdown::does_support_markdown(&ls_options),
             hover_participants: vec![],
         }
     }
@@ -188,7 +189,7 @@ impl HTMLHover {
 
             for tag in provider.provide_tags() {
                 if tag.name.to_lowercase() == cur_tag.to_lowercase() {
-                    let markup_content = generate_documentation(
+                    let markup_content = data_provider::generate_documentation(
                         GenerateDocumentationItem {
                             description: tag.description.clone(),
                             references: tag.references.clone(),
@@ -232,7 +233,7 @@ impl HTMLHover {
 
             for attr in provider.provide_attributes(cur_tag) {
                 if cur_attr == attr.name && attr.description.is_some() {
-                    let contents = generate_documentation(
+                    let contents = data_provider::generate_documentation(
                         GenerateDocumentationItem {
                             description: attr.description.clone(),
                             references: attr.references.clone(),
@@ -292,7 +293,7 @@ impl HTMLHover {
         for provider in &context.data_providers {
             for attr_value in provider.provide_values(cur_tag, cur_attr) {
                 if cur_attr_value == attr_value.name && attr_value.description.is_some() {
-                    let contents = generate_documentation(
+                    let contents = data_provider::generate_documentation(
                         GenerateDocumentationItem {
                             description: attr_value.description.clone(),
                             references: attr_value.references.clone(),
@@ -324,7 +325,8 @@ impl HTMLHover {
     ) -> Option<Hover> {
         let cur_entity = self.filter_entity(text, context);
 
-        for (entity, value) in get_entities() {
+        let entities: &HashMap<_, _> = &html_entities::ENTITIES;
+        for (entity, value) in entities {
             let label = format!("&{}", entity);
 
             if cur_entity == label {
@@ -399,7 +401,7 @@ impl HTMLHover {
 
         let text = context.document.get_content(None);
 
-        while k > 0 && is_letter_or_digit(text, k - 1) {
+        while k > 0 && strings::is_letter_or_digit(text, k - 1) {
             k -= 1;
             character_start -= 1;
         }
@@ -407,7 +409,7 @@ impl HTMLHover {
         let mut n = k;
         let mut character_end = character_start;
 
-        while is_letter_or_digit(text, n) {
+        while strings::is_letter_or_digit(text, n) {
             n += 1;
             character_end += 1;
         }
@@ -444,7 +446,7 @@ impl HTMLHover {
         let mut k: isize = context.offset as isize - 1;
         let mut new_text = String::from("&");
 
-        while k >= 0 && is_letter_or_digit(text, k as usize) {
+        while k >= 0 && strings::is_letter_or_digit(text, k as usize) {
             k -= 1;
         }
 
@@ -452,7 +454,7 @@ impl HTMLHover {
 
         k += 1;
 
-        while is_letter_or_digit(text, k) {
+        while strings::is_letter_or_digit(text, k) {
             new_text += &text[k..k + 1];
             k += 1;
         }

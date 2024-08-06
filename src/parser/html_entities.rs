@@ -1,10 +1,11 @@
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-/// HTML 5 character entities
-///
-/// <https://www.w3.org/TR/html5/syntax.html#named-character-references>
-pub fn get_entities() -> HashMap<&'static str, &'static str> {
-    HashMap::from([
+lazy_static! {
+    /// HTML 5 character entities
+    ///
+    /// <https://www.w3.org/TR/html5/syntax.html#named-character-references>
+    pub static ref ENTITIES: HashMap<&'static str, &'static str> = HashMap::from([
         ("Aacute;", "\u{00C1}"),
         ("Aacute", "\u{00C1}"),
         ("aacute;", "\u{00E1}"),
@@ -2235,5 +2236,5 @@ pub fn get_entities() -> HashMap<&'static str, &'static str> {
         // ("zscr;", "\u{D835\uDCCF}"),
         ("zwj;", "\u{200D}"),
         ("zwnj;", "\u{200C}"),
-    ])
+    ]);
 }
