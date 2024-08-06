@@ -12,6 +12,23 @@ keywords = ["html", "lsp", "languageservice", "languageserver"]
 categories = ["development-tools"]
 
 [features]
+
+default = []
+
+full = [
+    "completion",
+    "folding",
+    "formatter",
+    "highlight",
+    "hover",
+    "linked_editing",
+    "links",
+    "matching_tag_position",
+    "rename",
+    "selection_range",
+    "symbols"
+]
+
 completion = []
 folding = []
 formatter = []
