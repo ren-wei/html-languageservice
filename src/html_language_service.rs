@@ -25,6 +25,7 @@ use crate::services::html_links;
 use crate::services::html_matching_tag_position;
 #[cfg(feature = "rename")]
 use crate::services::html_rename;
+#[cfg(feature = "selection_range")]
 use crate::services::html_selection_range;
 use crate::services::html_symbols;
 
@@ -51,13 +52,26 @@ use lsp_types::DocumentLink;
 use lsp_types::FoldingRange;
 #[cfg(feature = "hover")]
 use lsp_types::Hover;
+#[cfg(any(
+    feature = "formatter",
+    feature = "completion",
+    feature = "hover",
+    feature = "highlight",
+    feature = "selection_range",
+    feature = "rename",
+    feature = "matching_tag_position",
+    feature = "linked_editing"
+))]
+use lsp_types::Position;
 #[cfg(any(feature = "formatter", feature = "linked_editing"))]
 use lsp_types::Range;
+#[cfg(feature = "selection_range")]
+use lsp_types::SelectionRange;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 #[cfg(feature = "rename")]
 use lsp_types::WorkspaceEdit;
-use lsp_types::{DocumentSymbol, Position, SelectionRange, SymbolInformation, Url};
+use lsp_types::{DocumentSymbol, SymbolInformation, Url};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -216,6 +230,7 @@ impl HTMLLanguageService {
         html_folding::get_folding_ranges(document, context, data_manager)
     }
 
+    #[cfg(feature = "selection_range")]
     pub fn get_selection_ranges(
         document: &FullTextDocument,
         positions: &Vec<Position>,

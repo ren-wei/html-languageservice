@@ -16,5 +16,6 @@ pub(crate) mod html_links;
 pub(crate) mod html_matching_tag_position;
 #[cfg(feature = "rename")]
 pub(crate) mod html_rename;
+#[cfg(feature = "selection_range")]
 pub(crate) mod html_selection_range;
 pub(crate) mod html_symbols;

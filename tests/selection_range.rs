@@ -1,6 +1,9 @@
+#[cfg(feature = "selection_range")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "selection_range")]
 use lsp_textdocument::FullTextDocument;
 
+#[cfg(feature = "selection_range")]
 fn assert_ranges(content: &str, expected: Vec<(u32, &str)>) {
     let offset = content.find('|').unwrap();
     let value = format!("{}{}", &content[..offset], &content[offset + 1..]);
@@ -29,6 +32,7 @@ fn assert_ranges(content: &str, expected: Vec<(u32, &str)>) {
     assert_eq!(offset_pairs, expected, "{}", content);
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn basic() {
     assert_ranges("<div|>foo</div>", vec![(1, "div"), (0, "<div>foo</div>")]);
@@ -46,6 +50,7 @@ fn basic() {
     assert_ranges("<div>foo</div|>", vec![(10, "div"), (0, "<div>foo</div>")]);
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn attribute_name() {
     assert_ranges(
@@ -77,6 +82,7 @@ fn attribute_name() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn attribute_value() {
     assert_ranges(
@@ -120,6 +126,7 @@ fn attribute_value() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn unquoted_attribute_value() {
     assert_ranges(
@@ -133,6 +140,7 @@ fn unquoted_attribute_value() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn multiple_attribute_value() {
     assert_ranges(
@@ -147,6 +155,7 @@ fn multiple_attribute_value() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn self_closing_tags() {
     assert_ranges(
@@ -167,6 +176,7 @@ fn self_closing_tags() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn nested() {
     assert_ranges(
@@ -189,6 +199,7 @@ fn nested() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn void_elements() {
     assert_ranges(
@@ -224,11 +235,13 @@ fn void_elements() {
     );
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn unmatching_tags() {
     assert_ranges("<div></div|1>", vec![(0, "<div></div1>")]);
 }
 
+#[cfg(feature = "selection_range")]
 #[test]
 fn unhandled() {
     // We do not handle comments. This semantic selection is handled by VS Code's default provider, which returns
