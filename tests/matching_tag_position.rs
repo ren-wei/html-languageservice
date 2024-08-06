@@ -1,6 +1,9 @@
+#[cfg(feature = "matching_tag_position")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "matching_tag_position")]
 use lsp_textdocument::FullTextDocument;
 
+#[cfg(feature = "matching_tag_position")]
 fn test_matching_tag_position(content: &str) {
     let mut offset = content.find('|').unwrap();
     let mut value = format!("{}{}", &content[..offset], &content[offset + 1..]);
@@ -28,6 +31,7 @@ fn test_matching_tag_position(content: &str) {
     );
 }
 
+#[cfg(feature = "matching_tag_position")]
 #[test]
 fn matching_position() {
     test_matching_tag_position("<|div></$div>");

@@ -21,6 +21,7 @@ use crate::services::html_hover::HTMLHover;
 use crate::services::html_linked_editing;
 #[cfg(feature = "links")]
 use crate::services::html_links;
+#[cfg(feature = "matching_tag_position")]
 use crate::services::html_matching_tag_position;
 use crate::services::html_rename;
 use crate::services::html_selection_range;
@@ -230,6 +231,7 @@ impl HTMLLanguageService {
         html_rename::do_rename(uri, document, position, new_name, html_document)
     }
 
+    #[cfg(feature = "matching_tag_position")]
     pub fn find_matching_tag_position(
         document: &FullTextDocument,
         position: Position,
