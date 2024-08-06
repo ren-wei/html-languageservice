@@ -1,11 +1,11 @@
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use html_languageservice::{HTMLFormatConfiguration, HTMLLanguageService};
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use lsp_textdocument::FullTextDocument;
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use lsp_types::*;
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) {
     let range_start = unformatted.find('|');
     let range_end = unformatted.rfind('|');
@@ -41,7 +41,7 @@ fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) 
     assert_eq!(formatted, expected);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn full_document() {
     let unformatted = [
@@ -63,7 +63,7 @@ fn full_document() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn text_content() {
     let unformatted = [
@@ -85,7 +85,7 @@ fn text_content() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn inline_text_content() {
     let unformatted = [
@@ -103,7 +103,7 @@ fn inline_text_content() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn brother_text_content() {
     let unformatted = [
@@ -129,7 +129,7 @@ fn brother_text_content() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn indent_empty_lines() {
     let unformatted = [
@@ -173,7 +173,7 @@ fn indent_empty_lines() {
     format(&unformatted, &expected_true, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn self_closing_tag() {
     let unformatted = [
@@ -190,7 +190,7 @@ fn self_closing_tag() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn wrap_line_length() {
     let unformatted = [
@@ -225,7 +225,7 @@ fn wrap_line_length() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn self_closing_tag_wrap_line_length() {
     let unformatted = [
@@ -249,7 +249,7 @@ fn self_closing_tag_wrap_line_length() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn preserve_new_lines() {
     let unformatted = [
@@ -274,7 +274,7 @@ fn preserve_new_lines() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn max_preserve_new_lines() {
     let unformatted = [
@@ -300,7 +300,7 @@ fn max_preserve_new_lines() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn end_with_newline() {
     let unformatted = [
@@ -324,7 +324,7 @@ fn end_with_newline() {
     format(&unformatted, &expected, &options);
 }
 
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 #[test]
 fn range() {
     let unformatted = [

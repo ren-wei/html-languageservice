@@ -4,19 +4,19 @@ use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
 use crate::participant::{ICompletionParticipant, IHoverParticipant};
 use crate::services::html_completion::HTMLCompletion;
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use crate::services::html_formatter;
 use crate::services::html_hover::HTMLHover;
 use crate::services::{html_folding, html_selection_range};
 use crate::services::{html_highlight, html_rename};
 use crate::services::{html_linked_editing, html_symbols};
 use crate::services::{html_links, html_matching_tag_position};
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use crate::HTMLFormatConfiguration;
 use crate::{
     CompletionConfiguration, DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings,
 };
-#[cfg(feature = "experimental")]
+#[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
     CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
@@ -116,7 +116,7 @@ impl HTMLLanguageService {
     }
 
     /// Note: `format` is not prefect, it's under development
-    #[cfg(feature = "experimental")]
+    #[cfg(feature = "formatter")]
     pub fn format(
         document: &FullTextDocument,
         range: Option<Range>,

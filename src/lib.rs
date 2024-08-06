@@ -27,6 +27,7 @@
 //! }
 //! ```
 
+#[cfg(feature = "formatter")]
 mod beautify;
 pub mod html_data;
 mod html_language_service;
@@ -46,6 +47,7 @@ pub use services::html_completion::{
 
 pub use services::html_folding::FoldingRangeContext;
 
+#[cfg(feature = "formatter")]
 pub use services::html_formatter::HTMLFormatConfiguration;
 pub use services::html_hover::HoverSettings;
 
