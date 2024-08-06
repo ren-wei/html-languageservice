@@ -44,6 +44,7 @@ pub use parser::html_parse::parse_html_document;
 #[cfg(feature = "completion")]
 pub use services::html_completion::{CompletionConfiguration, DefaultDocumentContext, Quotes};
 
+#[cfg(feature = "folding")]
 pub use services::html_folding::FoldingRangeContext;
 
 #[cfg(feature = "formatter")]

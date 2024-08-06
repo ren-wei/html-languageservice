@@ -7,10 +7,12 @@ use crate::participant::ICompletionParticipant;
 use crate::participant::IHoverParticipant;
 #[cfg(feature = "completion")]
 use crate::services::html_completion::HTMLCompletion;
+#[cfg(feature = "folding")]
+use crate::services::html_folding;
 #[cfg(feature = "formatter")]
 use crate::services::html_formatter;
 use crate::services::html_hover::HTMLHover;
-use crate::services::{html_folding, html_selection_range};
+use crate::services::html_selection_range;
 use crate::services::{html_highlight, html_rename};
 use crate::services::{html_linked_editing, html_symbols};
 use crate::services::{html_links, html_matching_tag_position};
@@ -20,15 +22,19 @@ use crate::HTMLFormatConfiguration;
 
 #[cfg(feature = "completion")]
 use crate::CompletionConfiguration;
-use crate::{DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings};
+#[cfg(feature = "folding")]
+use crate::FoldingRangeContext;
+use crate::{DocumentContext, HTMLDataManager, HoverSettings};
 
 #[cfg(feature = "completion")]
 use lsp_types::CompletionList;
+#[cfg(feature = "folding")]
+use lsp_types::FoldingRange;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
-    DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position, Range,
-    SelectionRange, SymbolInformation, Url, WorkspaceEdit,
+    DocumentHighlight, DocumentLink, DocumentSymbol, Hover, Position, Range, SelectionRange,
+    SymbolInformation, Url, WorkspaceEdit,
 };
 
 use lsp_textdocument::FullTextDocument;
@@ -171,6 +177,7 @@ impl HTMLLanguageService {
         html_symbols::find_document_symbols2(document, html_document)
     }
 
+    #[cfg(feature = "folding")]
     pub fn get_folding_ranges(
         document: FullTextDocument,
         context: FoldingRangeContext,

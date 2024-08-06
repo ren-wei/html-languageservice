@@ -1,7 +1,11 @@
+#[cfg(feature = "folding")]
 use html_languageservice::{FoldingRangeContext, HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "folding")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "folding")]
 use lsp_types::FoldingRangeKind;
 
+#[cfg(feature = "folding")]
 fn assert_ranges(
     lines: &[&str],
     expected: &[ExpectedIndentRange],
@@ -31,18 +35,22 @@ fn assert_ranges(
     }
 }
 
+#[cfg(feature = "folding")]
 fn r(start_line: u32, end_line: u32) -> ExpectedIndentRange {
     ExpectedIndentRange::new(start_line, end_line, None)
 }
 
+#[cfg(feature = "folding")]
 fn rc(start_line: u32, end_line: u32) -> ExpectedIndentRange {
     ExpectedIndentRange::new(start_line, end_line, Some(FoldingRangeKind::Comment))
 }
 
+#[cfg(feature = "folding")]
 fn rr(start_line: u32, end_line: u32) -> ExpectedIndentRange {
     ExpectedIndentRange::new(start_line, end_line, Some(FoldingRangeKind::Region))
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_one_level() {
     assert_ranges(
@@ -57,6 +65,7 @@ fn fold_one_level() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_two_level() {
     assert_ranges(
@@ -73,6 +82,7 @@ fn fold_two_level() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_siblings() {
     assert_ranges(
@@ -92,6 +102,7 @@ fn fold_siblings() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_self_closing_tags() {
     assert_ranges(
@@ -112,6 +123,7 @@ fn fold_self_closing_tags() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_comment() {
     assert_ranges(
@@ -128,6 +140,7 @@ fn fold_comment() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_regions() {
     assert_ranges(
@@ -143,6 +156,7 @@ fn fold_regions() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_incomplete() {
     assert_ranges(
@@ -169,6 +183,7 @@ fn fold_incomplete() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn fold_intersecting_region() {
     assert_ranges(
@@ -200,6 +215,7 @@ fn fold_intersecting_region() {
     );
 }
 
+#[cfg(feature = "folding")]
 #[test]
 fn test_limit() {
     let input = [
@@ -298,6 +314,7 @@ fn test_limit() {
     assert_ranges(&input, &[r(0, 19)], Some("limit 1"), Some(1));
 }
 
+#[cfg(feature = "folding")]
 #[derive(PartialEq, Debug)]
 struct ExpectedIndentRange {
     start_line: u32,
@@ -305,6 +322,7 @@ struct ExpectedIndentRange {
     kind: Option<FoldingRangeKind>,
 }
 
+#[cfg(feature = "folding")]
 impl ExpectedIndentRange {
     pub fn new(start_line: u32, end_line: u32, kind: Option<FoldingRangeKind>) -> Self {
         ExpectedIndentRange {

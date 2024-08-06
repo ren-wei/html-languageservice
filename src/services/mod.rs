@@ -1,5 +1,6 @@
 #[cfg(feature = "completion")]
 pub(crate) mod html_completion;
+#[cfg(feature = "folding")]
 pub(crate) mod html_folding;
 #[cfg(feature = "formatter")]
 pub(crate) mod html_formatter;
