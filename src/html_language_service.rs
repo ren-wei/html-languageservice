@@ -11,9 +11,11 @@ use crate::services::html_completion::HTMLCompletion;
 use crate::services::html_folding;
 #[cfg(feature = "formatter")]
 use crate::services::html_formatter;
+#[cfg(feature = "highlight")]
+use crate::services::html_highlight;
 use crate::services::html_hover::HTMLHover;
+use crate::services::html_rename;
 use crate::services::html_selection_range;
-use crate::services::{html_highlight, html_rename};
 use crate::services::{html_linked_editing, html_symbols};
 use crate::services::{html_links, html_matching_tag_position};
 
@@ -28,13 +30,15 @@ use crate::{DocumentContext, HTMLDataManager, HoverSettings};
 
 #[cfg(feature = "completion")]
 use lsp_types::CompletionList;
+#[cfg(feature = "highlight")]
+use lsp_types::DocumentHighlight;
 #[cfg(feature = "folding")]
 use lsp_types::FoldingRange;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
-    DocumentHighlight, DocumentLink, DocumentSymbol, Hover, Position, Range, SelectionRange,
-    SymbolInformation, Url, WorkspaceEdit,
+    DocumentLink, DocumentSymbol, Hover, Position, Range, SelectionRange, SymbolInformation, Url,
+    WorkspaceEdit,
 };
 
 use lsp_textdocument::FullTextDocument;
@@ -145,6 +149,7 @@ impl HTMLLanguageService {
         html_formatter::format(document, &range, options)
     }
 
+    #[cfg(feature = "highlight")]
     pub fn find_document_highlights(
         document: &FullTextDocument,
         position: &Position,

@@ -1,6 +1,9 @@
+#[cfg(feature = "highlight")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "highlight")]
 use lsp_textdocument::FullTextDocument;
 
+#[cfg(feature = "highlight")]
 fn assert_highlights(value: &str, expected_matches: &[usize], element_name: Option<&str>) {
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
@@ -31,6 +34,7 @@ fn assert_highlights(value: &str, expected_matches: &[usize], element_name: Opti
     }
 }
 
+#[cfg(feature = "highlight")]
 #[test]
 fn single() {
     assert_highlights("|<html></html>", &[], None);
@@ -48,6 +52,7 @@ fn single() {
     assert_highlights("<html></html>|", &[], None);
 }
 
+#[cfg(feature = "highlight")]
 #[test]
 fn nested() {
     assert_highlights("<html>|<div></div></html>", &[], None);
@@ -86,6 +91,7 @@ fn nested() {
     );
 }
 
+#[cfg(feature = "highlight")]
 #[test]
 fn self_closed() {
     assert_highlights("<html><|div/></html>", &[7], Some("div"));
@@ -93,6 +99,7 @@ fn self_closed() {
     assert_highlights("<html><div><d|iv/></div></html>", &[12], Some("div"));
 }
 
+#[cfg(feature = "highlight")]
 #[test]
 fn case_insensivity() {
     assert_highlights(
@@ -107,6 +114,7 @@ fn case_insensivity() {
     );
 }
 
+#[cfg(feature = "highlight")]
 #[test]
 fn incomplete() {
     assert_highlights("<div><ol><li></li></ol></p></|div>", &[1, 29], Some("div"));
