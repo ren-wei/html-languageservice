@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{
     Command, CompletionItem, CompletionItemKind, CompletionList, CompletionTextEdit, Documentation,
@@ -24,6 +25,11 @@ use crate::{
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
     HTMLLanguageServiceOptions,
 };
+
+lazy_static! {
+    static ref REG_WHITE_SPACE: Regex = Regex::new(r"^\s*$").unwrap();
+    static ref REG_QUOTE: Regex = Regex::new(r#"^["']*$"#).unwrap();
+}
 
 pub struct HTMLCompletion {
     supports_markdown: bool,
@@ -966,11 +972,11 @@ impl CompletionContext<'_> {
 }
 
 fn is_white_space(text: &str) -> bool {
-    Regex::new(r"^\s*$").unwrap().is_match(text)
+    REG_WHITE_SPACE.is_match(text)
 }
 
 fn is_quote(text: &str) -> bool {
-    Regex::new(r#"^["']*$"#).unwrap().is_match(text)
+    REG_QUOTE.is_match(text)
 }
 
 fn is_followed_by(

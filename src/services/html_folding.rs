@@ -1,10 +1,15 @@
 use std::cmp::Ordering;
 
+use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{FoldingRange, FoldingRangeKind};
 use regex::Regex;
 
 use crate::{parser::html_scanner::TokenType, HTMLDataManager, HTMLLanguageService};
+
+lazy_static! {
+    static ref REG_REGION: Regex = Regex::new(r"^\s*#(region\b)|(endregion\b)").unwrap();
+}
 
 pub fn get_folding_ranges(
     document: FullTextDocument,
@@ -65,10 +70,7 @@ pub fn get_folding_ranges(
             TokenType::Comment => {
                 let mut start_line = document.position_at(scanner.get_token_offset() as u32).line;
                 let text = scanner.get_token_text();
-                if let Some(caps) = Regex::new(r"^\s*#(region\b)|(endregion\b)")
-                    .unwrap()
-                    .captures(&text)
-                {
+                if let Some(caps) = REG_REGION.captures(&text) {
                     if caps.get(1).is_some() {
                         stack.push((start_line, String::new()));
                     } else if stack.len() > 0 {

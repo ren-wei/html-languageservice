@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{Hover, HoverContents, MarkedString, MarkupContent, MarkupKind, Position, Range};
 use regex::Regex;
@@ -19,6 +20,10 @@ use crate::{
     utils::{markdown::does_support_markdown, strings::is_letter_or_digit},
     HTMLLanguageServiceOptions,
 };
+
+lazy_static! {
+    static ref REG_QUOTE: Regex = Regex::new(r#"['"]"#).unwrap();
+}
 
 pub struct HTMLHover {
     supports_markdown: bool,
@@ -485,7 +490,7 @@ impl HTMLHover {
     fn trim_quotes(s: &str) -> String {
         let mut s = s;
         if s.len() <= 1 {
-            return Regex::new(r#"['"]"#).unwrap().replace(s, "").to_string();
+            return REG_QUOTE.replace(s, "").to_string();
         }
 
         if s.chars().next() == Some('\'') || s.chars().next() == Some('"') {

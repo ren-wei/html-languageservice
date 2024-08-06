@@ -1,4 +1,15 @@
+use lazy_static::lazy_static;
 use regex::Regex;
+
+lazy_static! {
+    static ref REG_DOCTYPE: Regex = Regex::new(r"^!(?i)doctype").unwrap();
+    static ref REG_NON_SPECIAL_START: Regex = Regex::new(r#"^[^\s"'`=<>]+"#).unwrap();
+    static ref REG_SCRIPT_COMMENT: Regex = Regex::new(r"<!--|-->|<\/?script\s*\/?>?").unwrap();
+    static ref REG_ELEMENT_NAME: Regex = Regex::new(r"^[_:\w][_:\w\-.\d]*").unwrap();
+    static ref REG_NON_ELEMENT_NAME: Regex =
+        Regex::new(r#"^[^\s"'></=\x00-\x0F\x7F\x80-\x9F]*"#).unwrap();
+    static ref REG_STYLE: Regex = Regex::new(r"<\/style").unwrap();
+}
 
 pub struct Scanner<'a> {
     state: ScannerState,
@@ -128,11 +139,7 @@ impl Scanner<'_> {
                             self.state = ScannerState::WithinComment;
                             return self.finish_token(offset, TokenType::StartCommentTag, None);
                         }
-                        if self
-                            .stream
-                            .advance_if_regexp(Regex::new(r"^!(?i)doctype").unwrap())
-                            != ""
-                        {
+                        if self.stream.advance_if_regexp(&REG_DOCTYPE) != "" {
                             self.state = ScannerState::WithinDoctype;
                             return self.finish_token(offset, TokenType::StartDoctypeTag, None);
                         }
@@ -297,9 +304,7 @@ impl Scanner<'_> {
                 }
                 let cur_char = self.stream.peek_char(0);
                 let prev_char = self.stream.peek_char(-1);
-                let mut attribute_value = self
-                    .stream
-                    .advance_if_regexp(Regex::new(r#"^[^\s"'`=<>]+"#).unwrap());
+                let mut attribute_value = self.stream.advance_if_regexp(&REG_NON_SPECIAL_START);
                 if attribute_value.len() > 0 {
                     let mut is_go_back = false;
                     if cur_char == Some('>') && prev_char == Some('/') {
@@ -352,9 +357,7 @@ impl Scanner<'_> {
                 // see http://stackoverflow.com/questions/14574471/how-do-browsers-parse-a-script-tag-exactly
                 let mut script_state: u8 = 1;
                 while !self.stream.eos() {
-                    let m = self
-                        .stream
-                        .advance_if_regexp(Regex::new(r"<!--|-->|<\/?script\s*\/?>?").unwrap());
+                    let m = self.stream.advance_if_regexp(&REG_SCRIPT_COMMENT);
                     if m.len() == 0 {
                         self.stream.go_to_end();
                         return self.finish_token(offset, TokenType::Script, None);
@@ -388,8 +391,7 @@ impl Scanner<'_> {
             }
 
             ScannerState::WithinStyleContent => {
-                self.stream
-                    .advance_until_regexp(Regex::new(r"<\/style").unwrap());
+                self.stream.advance_until_regexp(&REG_STYLE);
                 self.state = ScannerState::WithinContent;
                 if offset < self.stream.pos() {
                     return self.finish_token(offset, TokenType::Styles, None);
@@ -418,7 +420,7 @@ impl Scanner<'_> {
     fn next_element_name(&mut self) -> Option<String> {
         let s = self
             .stream
-            .advance_if_regexp(Regex::new(r"^[_:\w][_:\w\-.\d]*").unwrap())
+            .advance_if_regexp(&REG_ELEMENT_NAME)
             .to_lowercase();
         if s.len() != 0 {
             Some(s)
@@ -430,7 +432,7 @@ impl Scanner<'_> {
     fn next_attribute_name(&mut self) -> Option<String> {
         let s = self
             .stream
-            .advance_if_regexp(Regex::new(r#"^[^\s"'></=\x00-\x0F\x7F\x80-\x9F]*"#).unwrap())
+            .advance_if_regexp(&REG_NON_ELEMENT_NAME)
             .to_lowercase();
         if s.len() != 0 {
             Some(s)
@@ -519,7 +521,7 @@ impl MultiLineStream<'_> {
         true
     }
 
-    pub fn advance_if_regexp(&mut self, regexp: Regex) -> &str {
+    pub fn advance_if_regexp(&mut self, regexp: &Regex) -> &str {
         let haystack = &self.source[self.chars[self.position].0..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();
@@ -530,7 +532,7 @@ impl MultiLineStream<'_> {
         }
     }
 
-    pub fn advance_until_regexp(&mut self, regexp: Regex) -> &str {
+    pub fn advance_until_regexp(&mut self, regexp: &Regex) -> &str {
         let haystack = &self.source[self.chars[self.position].0..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();

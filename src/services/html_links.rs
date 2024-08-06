@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{DocumentLink, Range, Url};
 use regex::Regex;
@@ -8,6 +9,14 @@ use crate::{
     parser::html_scanner::{Scanner, ScannerState, TokenType},
     DocumentContext, HTMLDataManager,
 };
+
+lazy_static! {
+    static ref REG_REF: Regex =
+        Regex::new(r"\b(\w[\w\d+.-]*:\/\/)?[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))")
+            .unwrap();
+    static ref REG_JAVASCRIPT: Regex = Regex::new(r"(^\s*(?i)javascript\:)|([\n\r])").unwrap();
+    static ref REG_SCHEMA: Regex = Regex::new(r"^(\w[\w\d+.-]*):").unwrap();
+}
 
 pub fn find_document_links(
     uri: &Url,
@@ -157,9 +166,7 @@ fn validate_ref(url: &str) -> bool {
     if url.len() == 0 {
         return false;
     }
-    Regex::new(r"\b(\w[\w\d+.-]*:\/\/)?[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|\/?))")
-        .unwrap()
-        .is_match(url)
+    REG_REF.is_match(url)
 }
 
 fn get_workspace_url(
@@ -168,17 +175,12 @@ fn get_workspace_url(
     document_context: &impl DocumentContext,
     base: &Option<String>,
 ) -> Option<String> {
-    if Regex::new(r"(^\s*(?i)javascript\:)|([\n\r])")
-        .unwrap()
-        .is_match(token_content)
-    {
+    if REG_JAVASCRIPT.is_match(token_content) {
         return None;
     }
 
     let token_content = token_content.trim_start();
-    let caps = Regex::new(r"^(\w[\w\d+.-]*):")
-        .unwrap()
-        .captures(&token_content);
+    let caps = REG_SCHEMA.captures(&token_content);
     if let Some(caps) = caps {
         // Absolute link that needs no treatment
         let schema = caps.get(1).unwrap().as_str().to_lowercase();
