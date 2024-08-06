@@ -57,3 +57,15 @@ pub enum FileType {
     /// A symbolic link to a file.
     SymbolicLink = 64,
 }
+
+pub trait DocumentContext {
+    fn resolve_reference(&self, reference: &str, base: &str) -> Option<String>;
+}
+
+pub struct DefaultDocumentContext;
+
+impl DocumentContext for DefaultDocumentContext {
+    fn resolve_reference(&self, _reference: &str, _base: &str) -> Option<String> {
+        None
+    }
+}

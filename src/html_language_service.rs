@@ -2,7 +2,10 @@ use crate::html_language_types::HTMLLanguageServiceOptions;
 use crate::parser::html_document::HTMLDocument;
 use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
-use crate::participant::{ICompletionParticipant, IHoverParticipant};
+#[cfg(feature = "completion")]
+use crate::participant::ICompletionParticipant;
+use crate::participant::IHoverParticipant;
+#[cfg(feature = "completion")]
 use crate::services::html_completion::HTMLCompletion;
 #[cfg(feature = "formatter")]
 use crate::services::html_formatter;
@@ -11,21 +14,27 @@ use crate::services::{html_folding, html_selection_range};
 use crate::services::{html_highlight, html_rename};
 use crate::services::{html_linked_editing, html_symbols};
 use crate::services::{html_links, html_matching_tag_position};
+
 #[cfg(feature = "formatter")]
 use crate::HTMLFormatConfiguration;
-use crate::{
-    CompletionConfiguration, DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings,
-};
+
+#[cfg(feature = "completion")]
+use crate::CompletionConfiguration;
+use crate::{DocumentContext, FoldingRangeContext, HTMLDataManager, HoverSettings};
+
+#[cfg(feature = "completion")]
+use lsp_types::CompletionList;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 use lsp_types::{
-    CompletionList, DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position,
-    Range, SelectionRange, SymbolInformation, Url, WorkspaceEdit,
+    DocumentHighlight, DocumentLink, DocumentSymbol, FoldingRange, Hover, Position, Range,
+    SelectionRange, SymbolInformation, Url, WorkspaceEdit,
 };
 
 use lsp_textdocument::FullTextDocument;
 
 pub struct HTMLLanguageService {
+    #[cfg(feature = "formatter")]
     html_completion: HTMLCompletion,
     html_hover: HTMLHover,
 }
@@ -33,6 +42,7 @@ pub struct HTMLLanguageService {
 impl HTMLLanguageService {
     pub fn new(options: &HTMLLanguageServiceOptions) -> HTMLLanguageService {
         HTMLLanguageService {
+            #[cfg(feature = "formatter")]
             html_completion: HTMLCompletion::new(options),
             html_hover: HTMLHover::new(options),
         }
@@ -49,6 +59,7 @@ impl HTMLLanguageService {
         HTMLParser::parse_document(document, data_manager)
     }
 
+    #[cfg(feature = "formatter")]
     pub async fn do_complete(
         &self,
         document: &FullTextDocument,
@@ -70,6 +81,7 @@ impl HTMLLanguageService {
             .await
     }
 
+    #[cfg(feature = "completion")]
     pub fn set_completion_participants(
         &mut self,
         completion_participants: Vec<Box<dyn ICompletionParticipant>>,
@@ -78,6 +90,7 @@ impl HTMLLanguageService {
             .set_completion_participants(completion_participants);
     }
 
+    #[cfg(feature = "formatter")]
     pub fn do_quote_complete(
         document: &FullTextDocument,
         position: &Position,
@@ -87,6 +100,7 @@ impl HTMLLanguageService {
         HTMLCompletion::do_quote_complete(document, position, html_document, settings)
     }
 
+    #[cfg(feature = "completion")]
     pub fn do_tag_complete(
         &self,
         document: &FullTextDocument,

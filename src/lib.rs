@@ -41,9 +41,8 @@ mod utils;
 pub use language_facts::data_manager::HTMLDataManager;
 pub use parser::html_parse::parse_html_document;
 
-pub use services::html_completion::{
-    CompletionConfiguration, DefaultDocumentContext, DocumentContext, Quotes,
-};
+#[cfg(feature = "completion")]
+pub use services::html_completion::{CompletionConfiguration, DefaultDocumentContext, Quotes};
 
 pub use services::html_folding::FoldingRangeContext;
 
@@ -52,4 +51,6 @@ pub use services::html_formatter::HTMLFormatConfiguration;
 pub use services::html_hover::HoverSettings;
 
 pub use html_language_service::HTMLLanguageService;
-pub use html_language_types::{FileStat, FileSystemProvider, FileType, HTMLLanguageServiceOptions};
+pub use html_language_types::{
+    DocumentContext, FileStat, FileSystemProvider, FileType, HTMLLanguageServiceOptions,
+};

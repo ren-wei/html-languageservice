@@ -1,12 +1,17 @@
+#[cfg(feature = "completion")]
 use std::collections::HashMap;
 
+#[cfg(feature = "completion")]
 use html_languageservice::{
     CompletionConfiguration, DefaultDocumentContext, HTMLDataManager, HTMLLanguageService,
     HTMLLanguageServiceOptions, Quotes,
 };
+#[cfg(feature = "completion")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "completion")]
 use lsp_types::*;
 
+#[cfg(feature = "completion")]
 async fn test_completion_for(
     value: &str,
     expected: Expected,
@@ -61,6 +66,7 @@ async fn test_completion_for(
     }
 }
 
+#[cfg(feature = "completion")]
 fn assert_completion(
     completions: &CompletionList,
     expected: &ItemDescription,
@@ -147,6 +153,7 @@ fn assert_completion(
     }
 }
 
+#[cfg(feature = "completion")]
 fn test_quote_completion(
     value: &str,
     expected: Option<String>,
@@ -164,6 +171,7 @@ fn test_quote_completion(
     assert_eq!(actual, expected);
 }
 
+#[cfg(feature = "completion")]
 fn test_tag_completion(value: &str, expected: Option<String>) {
     let offset = value.find('|').unwrap();
     let value: &str = &format!("{}{}", &value[..offset], &value[offset + 1..]);
@@ -179,6 +187,7 @@ fn test_tag_completion(value: &str, expected: Option<String>) {
     assert_eq!(actual, expected);
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn complete() {
     test_completion_for(
@@ -1250,6 +1259,7 @@ async fn complete() {
         ).await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn references() {
     let doc =
@@ -1277,6 +1287,7 @@ async fn references() {
     .await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn case_sensitivity() {
     test_completion_for(
@@ -1358,6 +1369,7 @@ async fn case_sensitivity() {
     .await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn handlebar_completion() {
     test_completion_for(
@@ -1377,6 +1389,7 @@ async fn handlebar_completion() {
         ).await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn support_script_type() {
     test_completion_for(
@@ -1395,6 +1408,7 @@ async fn support_script_type() {
     .await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn complete_aria() {
     let expected_aria_attributes = vec![
@@ -1616,6 +1630,7 @@ async fn complete_aria() {
     .await;
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn settings() {
     test_completion_for(
@@ -1692,6 +1707,7 @@ async fn settings() {
     .await;
 }
 
+#[cfg(feature = "completion")]
 #[test]
 fn do_quote_complete() {
     test_quote_completion("<a foo=|", Some(r#""$1""#.to_string()), None);
@@ -1727,6 +1743,7 @@ fn do_quote_complete() {
     );
 }
 
+#[cfg(feature = "completion")]
 #[tokio::test]
 async fn do_tag_complete() {
     test_tag_completion("<div>|", Some("$0</div>".to_string()));
@@ -1746,12 +1763,14 @@ async fn do_tag_complete() {
     test_tag_completion("<div><br></|>", Some("div".to_string()));
 }
 
+#[cfg(feature = "completion")]
 #[derive(Default)]
 struct Expected {
     count: Option<usize>,
     items: Vec<ItemDescription>,
 }
 
+#[cfg(feature = "completion")]
 #[derive(Default, Clone)]
 struct ItemDescription {
     label: &'static str,

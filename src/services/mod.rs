@@ -1,3 +1,4 @@
+#[cfg(feature = "completion")]
 pub(crate) mod html_completion;
 pub(crate) mod html_folding;
 #[cfg(feature = "formatter")]

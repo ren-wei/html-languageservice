@@ -1008,18 +1008,6 @@ fn get_word_end(s: &str, offset: usize, limit: usize) -> usize {
     offset
 }
 
-pub trait DocumentContext {
-    fn resolve_reference(&self, reference: &str, base: &str) -> Option<String>;
-}
-
-pub struct DefaultDocumentContext;
-
-impl DocumentContext for DefaultDocumentContext {
-    fn resolve_reference(&self, _reference: &str, _base: &str) -> Option<String> {
-        None
-    }
-}
-
 pub struct CompletionConfiguration {
     pub hide_auto_complete_proposals: bool,
     pub attribute_default_value: Quotes,
