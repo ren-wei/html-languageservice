@@ -27,6 +27,7 @@ use crate::services::html_matching_tag_position;
 use crate::services::html_rename;
 #[cfg(feature = "selection_range")]
 use crate::services::html_selection_range;
+#[cfg(feature = "symbols")]
 use crate::services::html_symbols;
 
 #[cfg(feature = "formatter")]
@@ -69,9 +70,12 @@ use lsp_types::Range;
 use lsp_types::SelectionRange;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
+#[cfg(any(feature = "links", feature = "symbols", feature = "rename"))]
+use lsp_types::Url;
 #[cfg(feature = "rename")]
 use lsp_types::WorkspaceEdit;
-use lsp_types::{DocumentSymbol, SymbolInformation, Url};
+#[cfg(feature = "symbols")]
+use lsp_types::{DocumentSymbol, SymbolInformation};
 
 use lsp_textdocument::FullTextDocument;
 
@@ -206,6 +210,7 @@ impl HTMLLanguageService {
         html_links::find_document_links(uri, document, document_context, data_manager)
     }
 
+    #[cfg(feature = "symbols")]
     pub fn find_document_symbols(
         uri: &Url,
         document: &FullTextDocument,
@@ -214,6 +219,7 @@ impl HTMLLanguageService {
         html_symbols::find_document_symbols(uri, document, html_document)
     }
 
+    #[cfg(feature = "symbols")]
     pub fn find_document_symbols2(
         document: &FullTextDocument,
         html_document: &HTMLDocument,

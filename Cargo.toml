@@ -22,6 +22,7 @@ links = []
 matching_tag_position = []
 rename = []
 selection_range = []
+symbols = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,11 +1,17 @@
+#[cfg(feature = "symbols")]
 use std::vec;
 
+#[cfg(feature = "symbols")]
 use html_languageservice::{HTMLDataManager, HTMLLanguageService};
+#[cfg(feature = "symbols")]
 use lsp_textdocument::FullTextDocument;
+#[cfg(feature = "symbols")]
 use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Url};
 
+#[cfg(feature = "symbols")]
 const TEST_URL: &'static str = "test://test/test.html";
 
+#[cfg(feature = "symbols")]
 fn test_symbol_informations_for(value: &str, expected: Vec<SymbolInformation>) {
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let uri = Url::parse(&TEST_URL).unwrap();
@@ -15,6 +21,7 @@ fn test_symbol_informations_for(value: &str, expected: Vec<SymbolInformation>) {
     assert_eq!(symbols, expected);
 }
 
+#[cfg(feature = "symbols")]
 fn test_document_symbols_for(value: &str, expected: Vec<DocumentSymbol>) {
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let html_document =
@@ -23,6 +30,7 @@ fn test_document_symbols_for(value: &str, expected: Vec<DocumentSymbol>) {
     assert_eq!(symbols, expected);
 }
 
+#[cfg(feature = "symbols")]
 #[test]
 fn simple() {
     let uri = Url::parse(&TEST_URL).unwrap();
@@ -120,6 +128,7 @@ fn simple() {
     );
 }
 
+#[cfg(feature = "symbols")]
 #[test]
 fn id_and_classes() {
     let uri = Url::parse(&TEST_URL).unwrap();
@@ -213,6 +222,7 @@ fn id_and_classes() {
     )
 }
 
+#[cfg(feature = "symbols")]
 #[test]
 fn self_closing() {
     let uri = Url::parse(&TEST_URL).unwrap();
@@ -301,6 +311,7 @@ fn self_closing() {
     );
 }
 
+#[cfg(feature = "symbols")]
 #[test]
 fn no_attributes() {
     let uri = Url::parse(&TEST_URL).unwrap();
