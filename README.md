@@ -9,19 +9,19 @@ This project is a collection of features necessary to implement an HTML language
 - customize data providers
 - parse html document
 - scanner
-- completion
-- hover
-- format
-- findDocumentHighlights
-- findDocumentLinks
-- findDocumentSymbols
-- getFoldingRanges
-- getSelectionRanges
-- quoteComplete
-- tagComplete
-- rename
-- findMatchingTagPosition
-- findLinkedEditingRanges
+- completion - `completion` feature activate
+- hover - `hover` feature activate
+- formatter - `formatter` feature activate
+- find document highlights - `highlight` feature activate
+- find document links - `links` feature activate
+- find document symbols - `symbols` feature activate
+- get folding ranges - `folding` feature activate
+- get selection ranges - `selection_range` feature activate
+- quote complete - `completion` feature activate
+- tag complete - `completion` feature activate
+- rename - `rename` feature activate
+- find matching tag position - `matching_tag_position` feature activate
+- find linked editing ranges - `linked_editing` feature activate
 
 ## Usage
 
