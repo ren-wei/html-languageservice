@@ -4,9 +4,10 @@ use lsp_types::{MarkupContent, MarkupKind};
 
 use crate::{
     html_data::{Description, HTMLDataV1, IAttributeData, IReference, ITagData, IValueData},
-    utils::markup::normalize_markup_content,
+    utils::markup,
 };
 
+/// Built-in data provider that provides information for `HTMLDataManager`
 pub struct HTMLDataProvider {
     id: String,
     tags: Vec<ITagData>,
@@ -15,7 +16,10 @@ pub struct HTMLDataProvider {
     value_set_map: HashMap<String, Vec<IValueData>>,
 }
 
+/// To implement that the data provider can provide information to the `HTMLDataManager`
 pub trait IHTMLDataProvider: Send + Sync {
+    /// The ID of the data provider, which cannot be duplicated,
+    /// note that the ID of the built-in data provider is "html5"
     fn get_id(&self) -> &str;
     fn is_applicable(&self, language_id: &str) -> bool;
     fn provide_tags(&self) -> &Vec<ITagData>;
@@ -141,7 +145,7 @@ pub fn generate_documentation(
     };
 
     if item.description.is_some() && setting.documentation {
-        let normalized_description = normalize_markup_content(item.description.unwrap());
+        let normalized_description = markup::normalize_markup_content(item.description.unwrap());
         result.value += &normalized_description.value;
     }
 

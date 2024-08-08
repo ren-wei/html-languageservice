@@ -6,6 +6,9 @@ use super::{
     web_custom_data::HTML_DATA,
 };
 
+/// Provides tags, attributes, and attribute value and so on,
+/// for completion proposals and hover information.
+/// It has standard data built-in and can be customized
 pub struct HTMLDataManager {
     data_providers: Vec<Box<dyn IHTMLDataProvider>>,
 }
@@ -25,6 +28,7 @@ impl HTMLDataManager {
         data_manager
     }
 
+    /// Set up a data provider, and the old data will be cleaned
     pub fn set_data_providers(
         &mut self,
         built_in: bool,
@@ -43,10 +47,14 @@ impl HTMLDataManager {
         &self.data_providers
     }
 
-    pub fn is_void_element(&self, e: &str, void_elements: &Vec<String>) -> bool {
-        void_elements.contains(&e.to_string())
+    /// Is the tag void element
+    ///
+    /// `void_elements` is from `get_void_elements`, and you should cache it to avoid duplicate void_elements generation
+    pub fn is_void_element(&self, tag: &str, void_elements: &Vec<String>) -> bool {
+        void_elements.contains(&tag.to_string())
     }
 
+    /// Get `void_elements` from data_provider and you should cache it if you make sure it doesn't change
     pub fn get_void_elements(&self, language_id: &str) -> Vec<String> {
         let mut void_tags: Vec<String> = vec![];
         for provider in &self.data_providers {
@@ -62,6 +70,7 @@ impl HTMLDataManager {
         void_tags
     }
 
+    /// Is the `attr` of `tag` a path attribute
     pub fn is_path_attribute(&self, tag: &str, attr: &str) -> bool {
         if ["src", "href"].contains(&attr) {
             return true;
@@ -89,30 +98,30 @@ impl Default for HTMLDataManager {
 }
 
 lazy_static! {
-static ref PATH_TAG_AND_ATTR: Value = json!({
-    // HTML 4
-    "a": "href",
-    "area": "href",
-    "body": "background",
-    "blockquote": "cite",
-    "del": "cite",
-    "form": "action",
-    "frame": ["src", "longdesc"],
-    "img": ["src", "longdesc"],
-    "ins": "cite",
-    "link": "href",
-    "object": "data",
-    "q": "cite",
-    "script": "src",
-    // HTML 5
-    "audio": "src",
-    "button": "formaction",
-    "command": "icon",
-    "embed": "src",
-    "html": "manifest",
-    "input": ["src", "formaction"],
-    "source": "src",
-    "track": "src",
-    "video": ["src", "poster"]
-});
+    static ref PATH_TAG_AND_ATTR: Value = json!({
+        // HTML 4
+        "a": "href",
+        "area": "href",
+        "body": "background",
+        "blockquote": "cite",
+        "del": "cite",
+        "form": "action",
+        "frame": ["src", "longdesc"],
+        "img": ["src", "longdesc"],
+        "ins": "cite",
+        "link": "href",
+        "object": "data",
+        "q": "cite",
+        "script": "src",
+        // HTML 5
+        "audio": "src",
+        "button": "formaction",
+        "command": "icon",
+        "embed": "src",
+        "html": "manifest",
+        "input": ["src", "formaction"],
+        "source": "src",
+        "track": "src",
+        "video": ["src", "poster"]
+    });
 }

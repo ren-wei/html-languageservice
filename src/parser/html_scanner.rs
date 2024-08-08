@@ -11,6 +11,7 @@ lazy_static! {
     static ref REG_STYLE: Regex = Regex::new(r"<\/style").unwrap();
 }
 
+/// Scan the input string with char as the base unit to generate a token stream
 pub struct Scanner<'a> {
     state: ScannerState,
     token_type: TokenType,

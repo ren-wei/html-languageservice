@@ -79,6 +79,23 @@ use lsp_types::{DocumentSymbol, SymbolInformation};
 
 use lsp_textdocument::FullTextDocument;
 
+/// This is a collection of features necessary to implement an HTML language server
+///
+/// Make sure you activated the features you need of the `html-languageservice` crate on `Cargo.toml`
+///
+/// # Features
+///
+/// - completion
+/// - hover
+/// - formatter
+/// - highlight
+/// - links
+/// - symbols
+/// - folding
+/// - selection_range
+/// - rename
+/// - matching_tag_position
+/// - linked_editing
 pub struct HTMLLanguageService {
     #[cfg(feature = "formatter")]
     html_completion: HTMLCompletion,
@@ -87,9 +104,8 @@ pub struct HTMLLanguageService {
 }
 
 impl HTMLLanguageService {
-    pub fn new(
-        #[cfg(any(feature = "completion", feature = "hover"))] options: &HTMLLanguageServiceOptions,
-    ) -> HTMLLanguageService {
+    #[cfg(any(feature = "completion", feature = "hover"))]
+    pub fn new(options: &HTMLLanguageServiceOptions) -> HTMLLanguageService {
         HTMLLanguageService {
             #[cfg(feature = "completion")]
             html_completion: HTMLCompletion::new(options),
@@ -109,7 +125,8 @@ impl HTMLLanguageService {
         HTMLParser::parse_document(document, data_manager)
     }
 
-    #[cfg(feature = "formatter")]
+    /// Provide completion proposals for a given location
+    #[cfg(feature = "completion")]
     pub async fn do_complete(
         &self,
         document: &FullTextDocument,
@@ -131,6 +148,7 @@ impl HTMLLanguageService {
             .await
     }
 
+    /// Add additional completion items to the completion proposal
     #[cfg(feature = "completion")]
     pub fn set_completion_participants(
         &mut self,
@@ -140,7 +158,8 @@ impl HTMLLanguageService {
             .set_completion_participants(completion_participants);
     }
 
-    #[cfg(feature = "formatter")]
+    /// Provide quotes completion when `=` is entered
+    #[cfg(feature = "completion")]
     pub fn do_quote_complete(
         document: &FullTextDocument,
         position: &Position,
@@ -150,6 +169,7 @@ impl HTMLLanguageService {
         HTMLCompletion::do_quote_complete(document, position, html_document, settings)
     }
 
+    /// Completes the tag when `>` or `/` is entered
     #[cfg(feature = "completion")]
     pub fn do_tag_complete(
         &self,
@@ -162,6 +182,7 @@ impl HTMLLanguageService {
             .do_tag_complete(document, position, html_document, data_manager)
     }
 
+    /// Provides hover information at a given location
     #[cfg(feature = "hover")]
     pub async fn do_hover(
         &self,
@@ -176,11 +197,14 @@ impl HTMLLanguageService {
             .await
     }
 
+    /// Add additional hover to the hover proposal
     #[cfg(feature = "hover")]
     pub fn set_hover_participants(&mut self, hover_participants: Vec<Box<dyn IHoverParticipant>>) {
         self.html_hover.set_hover_participants(hover_participants);
     }
 
+    /// Formats the code at the given range
+    ///
     /// Note: `format` is not prefect, it's under development
     #[cfg(feature = "formatter")]
     pub fn format(
@@ -191,6 +215,7 @@ impl HTMLLanguageService {
         html_formatter::format(document, &range, options)
     }
 
+    /// Provides document highlights capability
     #[cfg(feature = "highlight")]
     pub fn find_document_highlights(
         document: &FullTextDocument,
@@ -200,6 +225,7 @@ impl HTMLLanguageService {
         html_highlight::find_document_highlights(document, position, html_document)
     }
 
+    /// Finds all links in the document
     #[cfg(feature = "links")]
     pub fn find_document_links(
         uri: &Url,
@@ -210,6 +236,7 @@ impl HTMLLanguageService {
         html_links::find_document_links(uri, document, document_context, data_manager)
     }
 
+    /// Finds all the symbols in the document, it returns `SymbolInformation`
     #[cfg(feature = "symbols")]
     pub fn find_document_symbols(
         uri: &Url,
@@ -219,6 +246,7 @@ impl HTMLLanguageService {
         html_symbols::find_document_symbols(uri, document, html_document)
     }
 
+    /// Finds all the symbols in the document, it returns `DocumentSymbol`
     #[cfg(feature = "symbols")]
     pub fn find_document_symbols2(
         document: &FullTextDocument,
@@ -227,6 +255,7 @@ impl HTMLLanguageService {
         html_symbols::find_document_symbols2(document, html_document)
     }
 
+    /// Get folding ranges for the given document
     #[cfg(feature = "folding")]
     pub fn get_folding_ranges(
         document: FullTextDocument,
@@ -236,6 +265,7 @@ impl HTMLLanguageService {
         html_folding::get_folding_ranges(document, context, data_manager)
     }
 
+    /// Get the selection ranges for the given document
     #[cfg(feature = "selection_range")]
     pub fn get_selection_ranges(
         document: &FullTextDocument,
@@ -245,6 +275,7 @@ impl HTMLLanguageService {
         html_selection_range::get_selection_ranges(document, positions, html_document)
     }
 
+    /// Rename the matching tag
     #[cfg(feature = "rename")]
     pub fn do_rename(
         uri: Url,
@@ -256,6 +287,7 @@ impl HTMLLanguageService {
         html_rename::do_rename(uri, document, position, new_name, html_document)
     }
 
+    /// Get the location of the matching tag
     #[cfg(feature = "matching_tag_position")]
     pub fn find_matching_tag_position(
         document: &FullTextDocument,
@@ -265,6 +297,7 @@ impl HTMLLanguageService {
         html_matching_tag_position::find_matching_tag_position(document, position, html_document)
     }
 
+    /// Provides linked editing range capability
     #[cfg(feature = "linked_editing")]
     pub fn find_linked_editing_ranges(
         document: &FullTextDocument,

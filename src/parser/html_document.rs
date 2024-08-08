@@ -187,13 +187,39 @@ impl Node {
     }
 }
 
+/// A tree of nodes for an HTML document
+///
+/// There is no reference to the parent node in the Node.
+/// The associated functions `find_node_before` and `find_node_at` keep a record of all parents of the target node.
+/// To get the parent node of the target node, you can like this:
+///
+/// ```rust
+/// use html_languageservice::{parse_html_document, HTMLDataManager};
+///
+/// let html_document = parse_html_document("<div><h1>title</h1></div>", "html", &HTMLDataManager::default());
+///
+/// let mut parent_list = vec![];
+/// let node = html_document.find_node_at(9, &mut parent_list);
+/// assert_eq!(node.unwrap().tag, Some("h1".to_string()));
+///
+/// let parent = parent_list.pop();
+/// assert_eq!(parent.unwrap().tag, Some("div".to_string()));
+///
+/// let parent = parent_list.pop();
+/// assert!(parent.is_none());
+/// ```
+///
+/// If 'parent' is 'None', then its parent node is HTMLDocument.
 #[derive(Clone)]
 pub struct HTMLDocument {
     pub roots: Vec<Node>,
 }
 
 impl HTMLDocument {
-    /// `parent_list` is a list where the previous node is the parent node of the latter node
+    /// Find the node before the node where the given 'offset' is located
+    ///
+    /// `parent_list` is a list of parent nodes and the previous node is the parent node of the latter node.
+    /// If you don't care about the parent node, you can use `&mut vec![]`.
     pub fn find_node_before<'a>(
         &'a self,
         offset: usize,
@@ -223,7 +249,10 @@ impl HTMLDocument {
         None
     }
 
-    /// `parent_list` is a list where the previous node is the parent node of the latter node
+    /// Find the node at the given 'offset' location
+    ///
+    /// `parent_list` is a list where the previous node is the parent node of the latter node.
+    /// If you don't care about the parent node, you can use `&mut vec![]`.
     pub fn find_node_at<'a>(
         &'a self,
         offset: usize,
