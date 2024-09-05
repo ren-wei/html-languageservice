@@ -385,6 +385,36 @@ fn missing_brackets() {
 }
 
 #[test]
+fn script_with_comments() {
+    assert_document(
+        "<script>/** 注释 */</script>",
+        vec![NodeJSON {
+            tag: "script".to_string(),
+            start: 0,
+            end: 26,
+            end_tag_start: Some(17),
+            closed: true,
+            children: vec![],
+        }],
+    );
+}
+
+#[test]
+fn style_with_comments() {
+    assert_document(
+        "<style>\n// 注释\n</style>",
+        vec![NodeJSON {
+            tag: "style".to_string(),
+            start: 0,
+            end: 22,
+            end_tag_start: Some(14),
+            closed: true,
+            children: vec![],
+        }],
+    );
+}
+
+#[test]
 fn find_node_before() {
     let input = r#"<div><input type="button"><span><br><hr></span></div>"#;
     assert_node_before(input, 0, None);

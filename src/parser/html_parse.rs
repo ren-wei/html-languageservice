@@ -36,7 +36,7 @@ pub fn parse_html_document(
     let void_elements = data_manager.get_void_elements(language_id);
     let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent, true);
 
-    let mut html_document = Node::new(0, text.len(), vec![]);
+    let mut html_document = Node::new(0, scanner.get_source_len(), vec![]);
     let mut cur = &mut html_document as *mut Node;
     let mut parent_list: Vec<*mut Node> = vec![];
     let mut end_tag_start = None;
@@ -47,7 +47,8 @@ pub fn parse_html_document(
         while token != TokenType::EOS {
             match token {
                 TokenType::StartTagOpen => {
-                    let child = Node::new(scanner.get_token_offset(), text.len(), vec![]);
+                    let child =
+                        Node::new(scanner.get_token_offset(), scanner.get_source_len(), vec![]);
                     let length = (*cur).children.len();
                     (*cur).children.push(child);
                     parent_list.push(cur);
@@ -121,7 +122,7 @@ pub fn parse_html_document(
                 TokenType::AttributeValue => {
                     let text = scanner.get_token_text();
                     if let Some(attr) = pending_attribute {
-                        let offset = scanner.get_token_offset() - 1 - attr.len();
+                        let offset = scanner.get_token_offset() - 1 - attr.chars().count();
                         (*cur)
                             .attributes
                             .insert(attr, NodeAttribute::new(Some(text.to_string()), offset));
@@ -133,7 +134,7 @@ pub fn parse_html_document(
             token = scanner.scan();
         }
         while !parent_list.is_empty() {
-            (*cur).end = text.len();
+            (*cur).end = scanner.get_source_len();
             (*cur).closed = false;
             cur = parent_list.pop().unwrap();
         }

@@ -103,6 +103,10 @@ impl Scanner<'_> {
         self.token_error
     }
 
+    pub fn get_source_len(&self) -> usize {
+        self.stream.len
+    }
+
     fn internal_scan(&mut self) -> TokenType {
         let offset = self.stream.pos();
         if self.stream.eos() {
@@ -526,7 +530,7 @@ impl MultiLineStream<'_> {
         let haystack = &self.source[self.chars[self.position].0..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();
-            self.position += m.end();
+            self.position += &haystack[..m.end()].chars().count();
             m.as_str()
         } else {
             ""
@@ -537,7 +541,7 @@ impl MultiLineStream<'_> {
         let haystack = &self.source[self.chars[self.position].0..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();
-            self.position += m.start();
+            self.position += &haystack[..m.start()].chars().count();
             m.as_str()
         } else {
             self.go_to_end();

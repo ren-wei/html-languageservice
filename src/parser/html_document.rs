@@ -22,7 +22,7 @@ pub struct Node {
 pub struct NodeAttribute {
     /// include quote
     pub value: Option<String>,
-    /// start offfset of attribute name
+    /// start offset of attribute name
     pub offset: usize,
 }
 

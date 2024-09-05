@@ -35,7 +35,7 @@ use crate::HTMLFormatConfiguration;
 
 #[cfg(feature = "completion")]
 use crate::CompletionConfiguration;
-#[cfg(any(feature = "formatter", feature = "links"))]
+#[cfg(any(feature = "completion", feature = "links"))]
 use crate::DocumentContext;
 #[cfg(feature = "folding")]
 use crate::FoldingRangeContext;
@@ -97,7 +97,7 @@ use lsp_textdocument::FullTextDocument;
 /// - matching_tag_position
 /// - linked_editing
 pub struct HTMLLanguageService {
-    #[cfg(feature = "formatter")]
+    #[cfg(feature = "completion")]
     html_completion: HTMLCompletion,
     #[cfg(feature = "hover")]
     html_hover: HTMLHover,
