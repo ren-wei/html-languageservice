@@ -8,6 +8,8 @@ use html_languageservice::{
     },
     HTMLDataManager,
 };
+use lsp_textdocument::FullTextDocument;
+use lsp_types::Range;
 
 fn parse(text: &str) -> HTMLDocument {
     let data_manager = HTMLDataManager::new(true, None);
@@ -391,8 +393,8 @@ fn script_with_comments() {
         vec![NodeJSON {
             tag: "script".to_string(),
             start: 0,
-            end: 26,
-            end_tag_start: Some(17),
+            end: 30,
+            end_tag_start: Some(21),
             closed: true,
             children: vec![],
         }],
@@ -406,11 +408,27 @@ fn style_with_comments() {
         vec![NodeJSON {
             tag: "style".to_string(),
             start: 0,
-            end: 22,
-            end_tag_start: Some(14),
+            end: 26,
+            end_tag_start: Some(18),
             closed: true,
             children: vec![],
         }],
+    );
+}
+
+#[test]
+fn range() {
+    let input = r##"<script>/** 作业运行接口报错 */</script>"##;
+    let document = FullTextDocument::new("html".to_string(), 0, input.to_string());
+    let html_document = parse(input);
+    let root = &html_document.roots[0];
+    println!("{:?} {:?}", root.start, root.end);
+    println!(
+        "{}<<<",
+        document.get_content(Some(Range {
+            start: document.position_at(root.start as u32),
+            end: document.position_at(root.end as u32),
+        }))
     );
 }
 

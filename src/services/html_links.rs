@@ -153,9 +153,9 @@ fn create_link(
 
 fn normalize_ref(url: &str) -> &str {
     if url.len() > 0 {
-        let first = url.chars().next();
-        let last = url.chars().next_back();
-        if first == last && (first == Some('\'') || first == Some('"')) {
+        let first = url.get(0..1);
+        let last = url.get(url.len() - 1..url.len());
+        if first == last && (first == Some("'") || first == Some(r#"""#)) {
             return &url[1..url.len() - 1];
         }
     }
@@ -227,9 +227,8 @@ fn validate_and_clean_uri(uri_str: &str, document_uri: &Url) -> Option<Url> {
             && uri.fragment().is_some()
             && !(uri_str.starts_with(&document_uri.to_string())
                 && uri_str
-                    .chars()
-                    .nth(document_uri.to_string().chars().count())
-                    .is_some_and(|c| c == '#'))
+                    .get(document_uri.as_str().len()..document_uri.as_str().len() + 1)
+                    .is_some_and(|c| c == "#"))
         {
             uri.set_fragment(None);
             return Some(uri);

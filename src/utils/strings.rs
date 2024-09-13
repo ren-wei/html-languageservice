@@ -1,9 +1,7 @@
 #[cfg(any(feature = "completion", feature = "hover"))]
 pub fn is_letter_or_digit(text: &str, index: usize) -> bool {
-    let c = text.chars().nth(index);
-    if let Some(c) = c {
-        c.is_ascii_lowercase() || c.is_ascii_uppercase() || c.is_ascii_digit()
-    } else {
-        false
-    }
+    use regex::Regex;
+
+    let c = text.get(index..index + 1);
+    c.is_some_and(|c| Regex::new("^[A-Za-z0-9]+$").unwrap().is_match(c))
 }

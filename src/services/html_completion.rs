@@ -264,15 +264,15 @@ impl HTMLCompletion {
                     if offset <= scanner.get_token_end() {
                         let mut start = scanner.get_token_offset() - 1;
                         while start > 0 {
-                            let ch = text.chars().nth(start).unwrap();
-                            if ch == '/' {
+                            let ch = text.get(start..start + 1);
+                            if ch == Some("/") {
                                 content.collect_close_tag_suggestions(
                                     start,
                                     false,
                                     scanner.get_token_end(),
                                 );
                                 return result;
-                            } else if !is_white_space(&ch.to_string()) {
+                            } else if !is_white_space(&ch.unwrap().to_string()) {
                                 break;
                             }
                             start -= 1;
@@ -301,7 +301,7 @@ impl HTMLCompletion {
         if offset == 0 {
             return None;
         }
-        if document.get_content(None).chars().nth(offset - 1) != Some('=') {
+        if document.get_content(None).get(offset - 1..offset) != Some("=") {
             return None;
         }
         let default_value = if let Some(settings) = settings {
@@ -361,8 +361,8 @@ impl HTMLCompletion {
         if offset == 0 {
             return None;
         }
-        let char = document.get_content(None).chars().nth(offset - 1);
-        if char == Some('>') {
+        let char = document.get_content(None).get(offset - 1..offset);
+        if char == Some(">") {
             let void_elements = data_manager.get_void_elements(document.language_id());
             let node = html_document.find_node_before(offset, &mut vec![])?;
             let node_tag = node.tag.as_ref()?;
@@ -386,7 +386,7 @@ impl HTMLCompletion {
                     token = scanner.scan();
                 }
             }
-        } else if char == Some('/') {
+        } else if char == Some("/") {
             let mut parent_list = vec![];
             let mut node = html_document.find_node_before(offset, &mut parent_list)?;
             loop {
@@ -409,7 +409,7 @@ impl HTMLCompletion {
             let mut token = scanner.scan();
             while token != TokenType::EOS && scanner.get_token_end() <= offset {
                 if token == TokenType::EndTagOpen && scanner.get_token_end() == offset {
-                    if document.get_content(None).chars().nth(offset) != Some('>') {
+                    if document.get_content(None).get(offset..offset + 1) != Some(">") {
                         return Some(format!("{}>", node_tag));
                     } else {
                         return Some(node_tag.clone());
@@ -512,7 +512,11 @@ impl CompletionContext<'_> {
     fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
         let mut replace_end = self.offset;
         let text = self.document.get_content(None);
-        while replace_end < name_end && text.chars().nth(replace_end).is_some_and(|c| c != '<') {
+        while replace_end < name_end
+            && text
+                .get(replace_end..replace_end + 1)
+                .is_some_and(|c| c != "<")
+        {
             replace_end += 1;
         }
         let current_attribute = if name_start > name_end {
@@ -658,7 +662,8 @@ impl CompletionContext<'_> {
             let mut value_content_end = value_end;
             // valueEnd points to he char after quote, which encloses the replace range
             if value_end > value_start
-                && self.text.chars().nth(value_end - 1) == self.text.chars().nth(value_start)
+                && self.text.get(value_end - 1..value_end)
+                    == self.text.get(value_start..value_start + 1)
             {
                 value_content_end -= 1;
             }
@@ -896,7 +901,7 @@ impl CompletionContext<'_> {
             k -= 1;
             character_start -= 1;
         }
-        if k >= 0 && self.text.chars().nth(k as usize) == Some('&') {
+        if k >= 0 && self.text.get(k as usize..(k + 1) as usize) == Some("&") {
             let range = Range::new(
                 Position {
                     line: self.position.line,
@@ -955,8 +960,8 @@ impl CompletionContext<'_> {
     fn get_line_indent(&self, offset: usize) -> Option<String> {
         let mut start = offset;
         while start > 0 {
-            let ch = self.text.chars().nth(start - 1);
-            if ch == Some('\n') {
+            let ch = self.text.get(start - 1..start);
+            if ch == Some("\n") {
                 return Some(self.text[start..offset].to_string());
             }
             if let Some(ch) = ch {

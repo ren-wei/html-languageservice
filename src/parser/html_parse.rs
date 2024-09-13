@@ -122,7 +122,7 @@ pub fn parse_html_document(
                 TokenType::AttributeValue => {
                     let text = scanner.get_token_text();
                     if let Some(attr) = pending_attribute {
-                        let offset = scanner.get_token_offset() - 1 - attr.chars().count();
+                        let offset = scanner.get_token_offset() - 1 - attr.len();
                         (*cur)
                             .attributes
                             .insert(attr, NodeAttribute::new(Some(text.to_string()), offset));

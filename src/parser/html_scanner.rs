@@ -11,7 +11,7 @@ lazy_static! {
     static ref REG_STYLE: Regex = Regex::new(r"<\/style").unwrap();
 }
 
-/// Scan the input string with char as the base unit to generate a token stream
+/// Scan the input string with byte as the base unit to generate a token stream
 pub struct Scanner<'a> {
     state: ScannerState,
     token_type: TokenType,
@@ -86,13 +86,7 @@ impl Scanner<'_> {
     }
 
     pub fn get_token_text(&self) -> &str {
-        let offset = self.stream.chars[self.token_offset].0;
-        let end_offset = if self.get_token_end() < self.stream.chars.len() {
-            self.stream.chars[self.get_token_end()].0
-        } else {
-            self.get_token_end()
-        };
-        &self.stream.source[offset..end_offset]
+        &self.stream.source[self.get_token_offset()..self.get_token_end()]
     }
 
     pub fn get_scanner_state(&self) -> ScannerState {
@@ -126,18 +120,18 @@ impl Scanner<'_> {
             }
 
             ScannerState::WithinDoctype => {
-                if self.stream.advance_if_char('>') {
+                if self.stream.advance_if_char(b'>') {
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::EndDoctypeTag, None);
                 }
-                self.stream.advance_until_char('>'); // >
+                self.stream.advance_until_char(b'>'); // >
                 return self.finish_token(offset, TokenType::Doctype, None);
             }
 
             ScannerState::WithinContent => {
-                if self.stream.advance_if_char('<') {
+                if self.stream.advance_if_char(b'<') {
                     // <
-                    if !self.stream.eos() && self.stream.peek_char(0) == Some('!') {
+                    if !self.stream.eos() && self.stream.peek_char(0) == Some(b'!') {
                         // !
                         if self.stream.advance_if_chars("!--") {
                             // <!--
@@ -149,7 +143,7 @@ impl Scanner<'_> {
                             return self.finish_token(offset, TokenType::StartDoctypeTag, None);
                         }
                     }
-                    if self.stream.advance_if_char('/') {
+                    if self.stream.advance_if_char(b'/') {
                         // /
                         self.state = ScannerState::AfterOpeningEndTag;
                         return self.finish_token(offset, TokenType::EndTagOpen, None);
@@ -157,7 +151,7 @@ impl Scanner<'_> {
                     self.state = ScannerState::AfterOpeningStartTag;
                     return self.finish_token(offset, TokenType::StartTagOpen, None);
                 }
-                self.stream.advance_until_char('<');
+                self.stream.advance_until_char(b'<');
                 return self.finish_token(offset, TokenType::Content, None);
             }
 
@@ -176,7 +170,7 @@ impl Scanner<'_> {
                     );
                 }
                 self.state = ScannerState::WithinEndTag;
-                self.stream.advance_until_char('>');
+                self.stream.advance_until_char(b'>');
                 if offset < self.stream.pos() {
                     return self.finish_token(
                         offset,
@@ -192,12 +186,12 @@ impl Scanner<'_> {
                     // white space is valid here
                     return self.finish_token(offset, TokenType::Whitespace, None);
                 }
-                if self.stream.advance_if_char('>') {
+                if self.stream.advance_if_char(b'>') {
                     // >
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::EndTagClose, None);
                 }
-                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some('<') {
+                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some(b'<') {
                     // <
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(
@@ -227,7 +221,7 @@ impl Scanner<'_> {
                     );
                 }
                 self.state = ScannerState::WithinTag;
-                self.stream.advance_until_char('>');
+                self.stream.advance_until_char(b'>');
                 if offset < self.stream.pos() {
                     return self.finish_token(
                         offset,
@@ -256,7 +250,7 @@ impl Scanner<'_> {
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(offset, TokenType::StartTagSelfClose, None);
                 }
-                if self.stream.advance_if_char('>') {
+                if self.stream.advance_if_char(b'>') {
                     // >
                     if self.last_tag == Some("script".to_string()) {
                         if self.last_type_value.is_some() {
@@ -272,7 +266,7 @@ impl Scanner<'_> {
                     }
                     return self.finish_token(offset, TokenType::StartTagClose, None);
                 }
-                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some('<') {
+                if self.emit_pseudo_close_tags && self.stream.peek_char(0) == Some(b'<') {
                     // <
                     self.state = ScannerState::WithinContent;
                     return self.finish_token(
@@ -295,7 +289,7 @@ impl Scanner<'_> {
                     return self.finish_token(offset, TokenType::Whitespace, None);
                 }
 
-                if self.stream.advance_if_char('=') {
+                if self.stream.advance_if_char(b'=') {
                     self.state = ScannerState::BeforeAttributeValue;
                     return self.finish_token(offset, TokenType::DelimiterAssign, None);
                 }
@@ -312,7 +306,7 @@ impl Scanner<'_> {
                 let mut attribute_value = self.stream.advance_if_regexp(&REG_NON_SPECIAL_START);
                 if attribute_value.len() > 0 {
                     let mut is_go_back = false;
-                    if cur_char == Some('>') && prev_char == Some('/') {
+                    if cur_char == Some(b'>') && prev_char == Some(b'/') {
                         // <foo bar=http://foo/>
                         is_go_back = true;
                         attribute_value = &attribute_value[..attribute_value.len() - 1];
@@ -321,7 +315,7 @@ impl Scanner<'_> {
                         let s = attribute_value.to_string();
                         self.last_type_value = if s.len() != 0 { Some(s) } else { None };
                     }
-                    let attribute_value_len = attribute_value.chars().count();
+                    let attribute_value_len = attribute_value.len();
                     if is_go_back {
                         self.stream.go_back(1);
                     }
@@ -333,7 +327,7 @@ impl Scanner<'_> {
                 }
                 let ch = self.stream.peek_char(0);
                 if let Some(ch) = ch {
-                    if ch == '\'' || ch == '"' {
+                    if ch == b'\'' || ch == b'"' {
                         self.stream.advance(1); // consume quote
                         if self.stream.advance_until_char(ch) {
                             self.stream.advance(1); // consume quote
@@ -382,7 +376,7 @@ impl Scanner<'_> {
                         if script_state == 3 {
                             script_state = 2;
                         } else {
-                            let length = m.chars().count();
+                            let length = m.len();
                             self.stream.go_back(length); // to the beginning of the closing tag
                             break;
                         }
@@ -449,20 +443,15 @@ impl Scanner<'_> {
 
 struct MultiLineStream<'a> {
     source: &'a str,
-    chars: Vec<(usize, char)>,
     len: usize,
     position: usize,
 }
 
 impl MultiLineStream<'_> {
     pub fn new<'a>(source: &'a str, position: usize) -> MultiLineStream<'a> {
-        let chars: Vec<(usize, char)> = source.char_indices().collect();
-
-        let len = chars.len();
         MultiLineStream {
             source,
-            chars,
-            len,
+            len: source.len(),
             position,
         }
     }
@@ -491,18 +480,18 @@ impl MultiLineStream<'_> {
         self.position = self.len;
     }
 
-    pub fn peek_char(&self, n: isize) -> Option<char> {
+    pub fn peek_char(&self, n: isize) -> Option<u8> {
         let index = if n >= 0 {
             self.position + n as usize
         } else {
             self.position - (-n) as usize
         };
-        Some(self.chars.get(index)?.1)
+        Some(self.source.bytes().nth(index)?)
     }
 
-    pub fn advance_if_char(&mut self, ch: char) -> bool {
-        if let Some((_, char)) = self.chars.get(self.position) {
-            if *char == ch {
+    pub fn advance_if_char(&mut self, ch: u8) -> bool {
+        if let Some(char) = self.source.bytes().nth(self.position) {
+            if char == ch {
                 self.position += 1;
                 return true;
             }
@@ -511,26 +500,27 @@ impl MultiLineStream<'_> {
     }
 
     pub fn advance_if_chars(&mut self, ch: &str) -> bool {
-        let chars: Vec<char> = ch.chars().collect();
-        if self.position + chars.len() > self.len {
+        if self.position + ch.len() > self.len {
             return false;
         }
 
-        for i in 0..chars.len() {
-            if chars[i] != self.chars[self.position + i].1 {
-                return false;
-            }
+        if !self
+            .source
+            .get(self.position..self.position + ch.len())
+            .is_some_and(|v| v == ch)
+        {
+            return false;
         }
 
-        self.advance(chars.len());
+        self.advance(ch.len());
         true
     }
 
     pub fn advance_if_regexp(&mut self, regexp: &Regex) -> &str {
-        let haystack = &self.source[self.chars[self.position].0..];
+        let haystack = &self.source[self.position..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();
-            self.position += &haystack[..m.end()].chars().count();
+            self.position += m.end();
             m.as_str()
         } else {
             ""
@@ -538,10 +528,10 @@ impl MultiLineStream<'_> {
     }
 
     pub fn advance_until_regexp(&mut self, regexp: &Regex) -> &str {
-        let haystack = &self.source[self.chars[self.position].0..];
+        let haystack = &self.source[self.position..];
         if let Some(captures) = regexp.captures(haystack) {
             let m = captures.get(0).unwrap();
-            self.position += &haystack[..m.start()].chars().count();
+            self.position += m.start();
             m.as_str()
         } else {
             self.go_to_end();
@@ -549,9 +539,9 @@ impl MultiLineStream<'_> {
         }
     }
 
-    pub fn advance_until_char(&mut self, ch: char) -> bool {
+    pub fn advance_until_char(&mut self, ch: u8) -> bool {
         while self.position < self.len {
-            if self.chars[self.position].1 == ch {
+            if self.source.bytes().nth(self.position) == Some(ch) {
                 return true;
             }
             self.advance(1);
@@ -560,13 +550,12 @@ impl MultiLineStream<'_> {
     }
 
     pub fn advance_until_chars(&mut self, ch: &str) -> bool {
-        let chars: Vec<char> = ch.chars().collect();
-        while self.position + chars.len() <= self.len {
-            let mut i = 0;
-            while i < chars.len() && self.chars[self.position + i].1 == chars[i] {
-                i += 1;
-            }
-            if i == chars.len() {
+        while self.position + ch.len() <= self.len {
+            if self
+                .source
+                .get(self.position..self.position + ch.len())
+                .is_some_and(|v| v == ch)
+            {
                 return true;
             }
             self.advance(1);
@@ -576,18 +565,17 @@ impl MultiLineStream<'_> {
     }
 
     pub fn skip_whitespace(&mut self) -> bool {
-        let n = self.advance_while_char(|ch| {
-            vec![' ', '\t', '\n', char::from_u32(12).unwrap(), '\r'].contains(&ch)
-        });
+        let n = self.advance_while_char(|ch| vec![b' ', b'\t', b'\n', 12, b'\r'].contains(&ch));
         n > 0
     }
 
     pub fn advance_while_char<F>(&mut self, condition: F) -> usize
     where
-        F: Fn(char) -> bool,
+        F: Fn(u8) -> bool,
     {
         let pos_now = self.position;
-        while self.position < self.len && condition(self.chars[self.position].1) {
+        while self.position < self.len && condition(self.source.bytes().nth(self.position).unwrap())
+        {
             self.advance(1);
         }
         self.position - pos_now

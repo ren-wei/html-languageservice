@@ -414,8 +414,8 @@ impl HTMLHover {
             character_end += 1;
         }
 
-        if k > 0 && text.chars().nth(k - 1) == Some('&') {
-            return if text.chars().nth(n) == Some(';') {
+        if k > 0 && text.get(k - 1..k) == Some("&") {
+            return if text.get(n..n + 1) == Some(";") {
                 Some(Range {
                     start: Position {
                         line: context.position.line,
@@ -495,11 +495,11 @@ impl HTMLHover {
             return REG_QUOTE.replace(s, "").to_string();
         }
 
-        if s.chars().next() == Some('\'') || s.chars().next() == Some('"') {
+        if s.get(0..1) == Some("'") || s.get(0..1) == Some(r#"""#) {
             s = &s[1..];
         }
 
-        if s.chars().next_back() == Some('\'') || s.chars().next_back() == Some('"') {
+        if s.get(s.len() - 1..s.len()) == Some("'") || s.get(s.len() - 1..s.len()) == Some(r#"""#) {
             s = &s[..s.len() - 1];
         }
 
