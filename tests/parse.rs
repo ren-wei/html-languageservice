@@ -8,8 +8,6 @@ use html_languageservice::{
     },
     HTMLDataManager,
 };
-use lsp_textdocument::FullTextDocument;
-use lsp_types::Range;
 
 fn parse(text: &str) -> HTMLDocument {
     let data_manager = HTMLDataManager::new(true, None);
@@ -67,7 +65,6 @@ fn assert_node_before(input: &str, offset: usize, expected_tag: Option<&str>) {
 fn assert_find_token_type_in_node(input: &str, offset: usize, expected_token_type: TokenType) {
     let document = parse(input);
     let node = document.find_node_at(offset, &mut vec![]);
-    println!("{:#?}", node);
     if let Some(node) = node {
         assert_eq!(
             Node::find_token_type_in_node(node, offset),
@@ -413,22 +410,6 @@ fn style_with_comments() {
             closed: true,
             children: vec![],
         }],
-    );
-}
-
-#[test]
-fn range() {
-    let input = r##"<script>/** 作业运行接口报错 */</script>"##;
-    let document = FullTextDocument::new("html".to_string(), 0, input.to_string());
-    let html_document = parse(input);
-    let root = &html_document.roots[0];
-    println!("{:?} {:?}", root.start, root.end);
-    println!(
-        "{}<<<",
-        document.get_content(Some(Range {
-            start: document.position_at(root.start as u32),
-            end: document.position_at(root.end as u32),
-        }))
     );
 }
 
