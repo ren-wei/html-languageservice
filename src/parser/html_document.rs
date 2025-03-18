@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::html_scanner::TokenType;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     /// It's None only when new
     pub tag: Option<String>,
@@ -210,7 +210,7 @@ impl Node {
 /// ```
 ///
 /// If 'parent' is 'None', then its parent node is HTMLDocument.
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HTMLDocument {
     pub roots: Vec<Node>,
 }
