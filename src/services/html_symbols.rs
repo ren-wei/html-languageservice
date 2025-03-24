@@ -1,5 +1,5 @@
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{DocumentSymbol, Location, Range, SymbolInformation, SymbolKind, Url};
+use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Url};
 
 use crate::parser::html_document::{HTMLDocument, Node};
 
@@ -37,8 +37,12 @@ fn provide_file_symbols_internal(
     symbols: &mut Vec<DocumentSymbol>,
 ) {
     let name = node_to_name(node);
+    let start = document.position_at(node.start as u32 + 1);
     let range = Range::new(
-        document.position_at(node.start as u32),
+        Position {
+            line: start.line,
+            character: start.character - 1,
+        },
         document.position_at(node.end as u32),
     );
 
