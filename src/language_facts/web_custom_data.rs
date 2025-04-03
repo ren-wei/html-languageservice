@@ -1,4 +1,12 @@
-// file generated from @vscode/web-custom-data NPM package
+use lazy_static::lazy_static;
+
+use crate::html_data::HTMLDataV1;
+
+lazy_static! {
+    pub static ref HTML_DATA_INSTANCE: HTMLDataV1 = serde_json::from_str(HTML_DATA).unwrap();
+}
+
+// generated from @vscode/web-custom-data NPM package
 pub static HTML_DATA: &str = r##"{
     "version": 1.1,
     "tags": [

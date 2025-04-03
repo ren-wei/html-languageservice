@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 
 use super::{
     data_provider::{HTMLDataProvider, IHTMLDataProvider},
-    web_custom_data::HTML_DATA,
+    web_custom_data::HTML_DATA_INSTANCE,
 };
 
 /// Provides tags, attributes, and attribute value and so on,
@@ -36,9 +36,10 @@ impl HTMLDataManager {
     ) {
         self.data_providers.clear();
         if built_in {
-            let data = serde_json::from_str(HTML_DATA).unwrap();
-            self.data_providers
-                .push(Box::new(HTMLDataProvider::new("html5".to_string(), data)));
+            self.data_providers.push(Box::new(HTMLDataProvider::new(
+                "html5".to_string(),
+                HTML_DATA_INSTANCE.clone(),
+            )));
         }
         self.data_providers.append(&mut providers);
     }
