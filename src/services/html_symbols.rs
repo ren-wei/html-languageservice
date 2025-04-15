@@ -1,10 +1,10 @@
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Url};
+use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Uri};
 
 use crate::parser::html_document::{HTMLDocument, Node};
 
 pub fn find_document_symbols(
-    uri: &Url,
+    uri: &Uri,
     document: &FullTextDocument,
     html_document: &HTMLDocument,
 ) -> Vec<SymbolInformation> {
@@ -68,7 +68,7 @@ fn provide_file_symbols_internal(
 }
 
 fn walk(
-    uri: &Url,
+    uri: &Uri,
     node: &DocumentSymbol,
     parent: Option<&DocumentSymbol>,
     symbols: &mut Vec<SymbolInformation>,

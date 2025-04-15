@@ -6,15 +6,17 @@ use html_languageservice::{HTMLDataManager, HTMLLanguageService};
 #[cfg(feature = "symbols")]
 use lsp_textdocument::FullTextDocument;
 #[cfg(feature = "symbols")]
-use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Url};
+use lsp_types::{DocumentSymbol, Location, Position, Range, SymbolInformation, SymbolKind, Uri};
 
 #[cfg(feature = "symbols")]
 const TEST_URL: &'static str = "test://test/test.html";
 
 #[cfg(feature = "symbols")]
 fn test_symbol_informations_for(value: &str, expected: Vec<SymbolInformation>) {
+    use std::str::FromStr;
+
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
-    let uri = Url::parse(&TEST_URL).unwrap();
+    let uri = Uri::from_str(&TEST_URL).unwrap();
     let html_document =
         HTMLLanguageService::parse_html_document(&document, &mut HTMLDataManager::default());
     let symbols = HTMLLanguageService::find_document_symbols(&uri, &document, &html_document);
@@ -33,7 +35,9 @@ fn test_document_symbols_for(value: &str, expected: Vec<DocumentSymbol>) {
 #[cfg(feature = "symbols")]
 #[test]
 fn simple() {
-    let uri = Url::parse(&TEST_URL).unwrap();
+    use std::str::FromStr;
+
+    let uri = Uri::from_str(&TEST_URL).unwrap();
     test_symbol_informations_for(
         "<div></div>",
         vec![
@@ -131,7 +135,9 @@ fn simple() {
 #[cfg(feature = "symbols")]
 #[test]
 fn id_and_classes() {
-    let uri = Url::parse(&TEST_URL).unwrap();
+    use std::str::FromStr;
+
+    let uri = Uri::from_str(&TEST_URL).unwrap();
     let content =
         r#"<html id='root'><body id="Foo" class="bar"><div class="a b"></div></body></html>"#;
 
@@ -225,7 +231,9 @@ fn id_and_classes() {
 #[cfg(feature = "symbols")]
 #[test]
 fn self_closing() {
-    let uri = Url::parse(&TEST_URL).unwrap();
+    use std::str::FromStr;
+
+    let uri = Uri::from_str(&TEST_URL).unwrap();
     let content = r#"<html><br id="Foo"><br id=Bar></html>"#;
 
     test_symbol_informations_for(
@@ -314,7 +322,9 @@ fn self_closing() {
 #[cfg(feature = "symbols")]
 #[test]
 fn no_attributes() {
-    let uri = Url::parse(&TEST_URL).unwrap();
+    use std::str::FromStr;
+
+    let uri = Uri::from_str(&TEST_URL).unwrap();
     let content = "<html><body><div></div></body></html>";
 
     test_symbol_informations_for(

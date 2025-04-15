@@ -1,27 +1,12 @@
 #[cfg(feature = "links")]
-use html_languageservice::{DocumentContext, HTMLDataManager, HTMLLanguageService};
+use std::str::FromStr;
+
+#[cfg(feature = "links")]
+use html_languageservice::{DefaultDocumentContext, HTMLDataManager, HTMLLanguageService};
 #[cfg(feature = "links")]
 use lsp_textdocument::FullTextDocument;
 #[cfg(feature = "links")]
-use lsp_types::{DocumentLink, Position, Range, Url};
-
-#[cfg(feature = "links")]
-struct LinkDocumentContent;
-
-#[cfg(feature = "links")]
-impl DocumentContext for LinkDocumentContent {
-    fn resolve_reference(&self, reference: &str, base: &str) -> Option<String> {
-        if let Ok(uri) = Url::parse(base) {
-            if let Ok(uri) = uri.join(reference) {
-                Some(uri.to_string())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-}
+use lsp_types::{DocumentLink, Position, Range, Uri};
 
 #[cfg(feature = "links")]
 fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&str>) {
@@ -35,13 +20,13 @@ fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&st
     } else {
         "html".to_string()
     };
-    let uri = Url::parse(model_url).unwrap();
+    let uri = Uri::from_str(model_url).unwrap();
     let document = FullTextDocument::new(language_id, 0, format!(r#"<a href="{}""#, token_content));
     let mut data_manager = HTMLDataManager::default();
     let links = HTMLLanguageService::find_document_links(
         &uri,
         &document,
-        &LinkDocumentContent,
+        &DefaultDocumentContext,
         &mut data_manager,
     );
     assert_eq!(
@@ -56,13 +41,13 @@ fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&st
 
 #[cfg(feature = "links")]
 fn test_link_detection(value: &str, expected_links: Vec<DocumentLink>) {
-    let uri = Url::parse("file:///test/data/abc/test.html").unwrap();
+    let uri = Uri::from_str("file:///test/data/abc/test.html").unwrap();
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let mut data_manager = HTMLDataManager::default();
     let links = HTMLLanguageService::find_document_links(
         &uri,
         &document,
-        &LinkDocumentContent,
+        &DefaultDocumentContext,
         &mut data_manager,
     );
 
@@ -197,7 +182,7 @@ fn link_detection() {
         r#"<img src="foo.png">"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 10), Position::new(0, 17)),
-            target: Some(Url::parse("file:///test/data/abc/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -206,7 +191,7 @@ fn link_detection() {
         r#"<a href="http://server/foo.html">"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 9), Position::new(0, 31)),
-            target: Some(Url::parse("http://server/foo.html").unwrap()),
+            target: Some(Uri::from_str("http://server/foo.html").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -216,7 +201,7 @@ fn link_detection() {
         r#"<LINK HREF="a.html">"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 12), Position::new(0, 18)),
-            target: Some(Url::parse("file:///test/data/abc/a.html").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/a.html").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -226,7 +211,7 @@ fn link_detection() {
         r#"<a href=http://www.example.com></a>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 8), Position::new(0, 30)),
-            target: Some(Url::parse("http://www.example.com").unwrap()),
+            target: Some(Uri::from_str("http://www.example.com").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -236,7 +221,7 @@ fn link_detection() {
         r#"<html><base href="docs/"><img src="foo.png"></html>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 35), Position::new(0, 42)),
-            target: Some(Url::parse("file:///test/data/abc/docs/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/docs/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -245,7 +230,7 @@ fn link_detection() {
         r#"<html><base href="http://www.example.com/page.html"><img src="foo.png"></html>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 62), Position::new(0, 69)),
-            target: Some(Url::parse("http://www.example.com/foo.png").unwrap()),
+            target: Some(Uri::from_str("http://www.example.com/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -254,7 +239,7 @@ fn link_detection() {
         r#"<html><base href=".."><img src="foo.png"></html>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 32), Position::new(0, 39)),
-            target: Some(Url::parse("file:///test/data/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -263,7 +248,7 @@ fn link_detection() {
         r#"<html><base href="."><img src="foo.png"></html>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 31), Position::new(0, 38)),
-            target: Some(Url::parse("file:///test/data/abc/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -272,7 +257,7 @@ fn link_detection() {
         r#"<html><base href="/docs/"><img src="foo.png"></html>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 36), Position::new(0, 43)),
-            target: Some(Url::parse("file:///docs/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///docs/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -291,7 +276,7 @@ fn link_detection() {
         r#"<blockquote cite="foo.png">"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 18), Position::new(0, 25)),
-            target: Some(Url::parse("file:///test/data/abc/foo.png").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/foo.png").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -300,7 +285,7 @@ fn link_detection() {
         r#"<style src="styles.css?t=345">"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 12), Position::new(0, 28)),
-            target: Some(Url::parse("file:///test/data/abc/styles.css").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/styles.css").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -310,7 +295,7 @@ fn link_detection() {
         vec![DocumentLink {
             range: Range::new(Position::new(0, 9), Position::new(0, 88)),
             target:
-                Some(Url::parse("https://werkenvoor.be/nl/jobs?f%5B0%5D=activitydomains%3A115&f%5B1%5D=lang%3Anl").unwrap()),
+                Some(Uri::from_str("https://werkenvoor.be/nl/jobs?f%5B0%5D=activitydomains%3A115&f%5B1%5D=lang%3Anl").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -319,7 +304,7 @@ fn link_detection() {
         r#"<a href="jobs.html?f=bar">link</a>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 9), Position::new(0, 24)),
-            target: Some(Url::parse("file:///test/data/abc/jobs.html").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/jobs.html").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -333,7 +318,7 @@ fn local_targets() {
         r##"<body><h1 id="title"></h1><a href="#title"</a></body>"##,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 35), Position::new(0, 41)),
-            target: Some(Url::parse("file:///test/data/abc/test.html#1,14").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/test.html#1,14").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -342,7 +327,7 @@ fn local_targets() {
         r#"<body><h1 id="title"></h1><a href="file:///test/data/abc/test.html#title"</a></body>"#,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 35), Position::new(0, 72)),
-            target: Some(Url::parse("file:///test/data/abc/test.html#1,14").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/test.html#1,14").unwrap()),
             tooltip: None,
             data: None,
         }],
@@ -351,7 +336,7 @@ fn local_targets() {
         r##"<body><h1 id="title"></h1><a href="#body"</a></body>"##,
         vec![DocumentLink {
             range: Range::new(Position::new(0, 35), Position::new(0, 40)),
-            target: Some(Url::parse("file:///test/data/abc/test.html").unwrap()),
+            target: Some(Uri::from_str("file:///test/data/abc/test.html").unwrap()),
             tooltip: None,
             data: None,
         }],

@@ -3,16 +3,18 @@ use html_languageservice::{HTMLDataManager, HTMLLanguageService};
 #[cfg(feature = "rename")]
 use lsp_textdocument::FullTextDocument;
 #[cfg(feature = "rename")]
-use lsp_types::{TextEdit, Url};
+use lsp_types::{TextEdit, Uri};
 
 #[cfg(feature = "rename")]
 fn test_rename(value: &str, new_name: &str, expected: &str) {
+    use std::str::FromStr;
+
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
 
     let document = FullTextDocument::new("html".to_string(), 0, value);
 
-    let uri = Url::parse("test://test/test.html").unwrap();
+    let uri = Uri::from_str("test://test/test.html").unwrap();
     let position = document.position_at(offset as u32);
     let html_document =
         HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());
@@ -32,7 +34,7 @@ fn test_rename(value: &str, new_name: &str, expected: &str) {
     let edits = changes.get(&uri);
 
     if edits.is_none() {
-        panic!("No edits for file at {}", uri);
+        panic!("No edits for file at {}", uri.as_str());
     }
 
     let new_content = apply_edits(&document, edits.unwrap());
@@ -41,12 +43,14 @@ fn test_rename(value: &str, new_name: &str, expected: &str) {
 
 #[cfg(feature = "rename")]
 fn test_no_rename(value: &str, new_name: &str) {
+    use std::str::FromStr;
+
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
 
     let document = FullTextDocument::new("html".to_string(), 0, value);
 
-    let uri = Url::parse("test://test/test.html").unwrap();
+    let uri = Uri::from_str("test://test/test.html").unwrap();
     let position = document.position_at(offset as u32);
     let html_document =
         HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());

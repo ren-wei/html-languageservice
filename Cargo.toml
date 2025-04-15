@@ -46,8 +46,8 @@ symbols = []
 [dependencies]
 async-trait = "0.1.88"
 lazy_static = "1.5.0"
-lsp-textdocument = "0.4.2"
-lsp-types = "0.94.1"
+lsp-textdocument = "0.4.0"
+lsp-types = "0.97.0"
 regex = "1.11.1"
 serde = "1.0.219"
 serde_json = "1.0.140"

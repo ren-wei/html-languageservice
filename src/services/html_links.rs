@@ -1,12 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{DocumentLink, Range, Url};
+use lsp_types::{DocumentLink, Range, Uri};
 use regex::Regex;
 
 use crate::{
     parser::html_scanner::{Scanner, ScannerState, TokenType},
+    utils::uri::create_uri_from_str,
     DocumentContext, HTMLDataManager,
 };
 
@@ -19,7 +20,7 @@ lazy_static! {
 }
 
 pub fn find_document_links(
-    uri: &Url,
+    uri: &Uri,
     document: &FullTextDocument,
     document_context: &impl DocumentContext,
     data_manager: &HTMLDataManager,
@@ -94,7 +95,7 @@ pub fn find_document_links(
     }
 
     for link in &mut links {
-        let local_with_hash = format!("{}#", uri);
+        let local_with_hash = format!("{}#", uri.as_str());
         if let Some(target) = &mut link.target {
             let target = target.to_string();
             if target.starts_with(&local_with_hash) {
@@ -102,7 +103,7 @@ pub fn find_document_links(
                 if let Some(offset) = id_locations.get(hash) {
                     let pos = document.position_at(*offset as u32);
                     link.target = Some(
-                        Url::parse(&format!(
+                        create_uri_from_str(&format!(
                             "{}{},{}",
                             local_with_hash,
                             pos.line + 1,
@@ -121,7 +122,7 @@ pub fn find_document_links(
 }
 
 fn create_link(
-    uri: &Url,
+    uri: &Uri,
     document: &FullTextDocument,
     document_context: &impl DocumentContext,
     attribute_value: &str,
@@ -170,7 +171,7 @@ fn validate_ref(url: &str) -> bool {
 }
 
 fn get_workspace_url(
-    document_uri: &Url,
+    document_uri: &Uri,
     token_content: &str,
     document_context: &impl DocumentContext,
     base: &Option<String>,
@@ -216,25 +217,27 @@ fn get_workspace_url(
         .map(|v| v.to_string())
 }
 
-fn validate_and_clean_uri(uri_str: &str, document_uri: &Url) -> Option<Url> {
-    if let Ok(mut uri) = Url::parse(uri_str) {
-        if uri.scheme() == "file" && uri.query().is_some() {
-            // see https://github.com/microsoft/vscode/issues/194577 & https://github.com/microsoft/vscode/issues/206238
-            uri.set_query(None);
-        }
-        let uri_str = uri.to_string();
-        if uri.scheme() == "file"
-            && uri.fragment().is_some()
-            && !(uri_str.starts_with(&document_uri.to_string())
-                && uri_str
-                    .get(document_uri.as_str().len()..document_uri.as_str().len() + 1)
-                    .is_some_and(|c| c == "#"))
-        {
-            uri.set_fragment(None);
-            return Some(uri);
-        }
-        Some(Url::parse(&uri_str).unwrap())
-    } else {
-        None
+fn validate_and_clean_uri(uri_str: &str, document_uri: &Uri) -> Option<Uri> {
+    let mut uri = create_uri_from_str(uri_str)?;
+    if uri.scheme().is_some_and(|v| v.as_str() == "file") && uri.query().is_some() {
+        // see https://github.com/microsoft/vscode/issues/194577 & https://github.com/microsoft/vscode/issues/206238
+        let uri_str = uri.as_str();
+        uri = create_uri_from_str(&uri_str[..uri_str.rfind("?").unwrap()]).unwrap();
     }
+    let uri_str = uri.to_string();
+    if uri.scheme().is_some_and(|v| v.as_str() == "file")
+        && uri.fragment().is_some()
+        && !(uri_str.starts_with(&document_uri.to_string())
+            && uri_str
+                .get(document_uri.as_str().len()..document_uri.as_str().len() + 1)
+                .is_some_and(|c| c == "#"))
+    {
+        // uri.set_fragment(None);
+        if let Some(auth) = uri.authority() {
+            return Some(Uri::from_str(format!("file://{}{}", auth, uri.path()).as_str()).unwrap());
+        } else {
+            return Some(Uri::from_str(format!("file://{}", uri.path()).as_str()).unwrap());
+        }
+    }
+    Some(create_uri_from_str(&uri_str).unwrap())
 }

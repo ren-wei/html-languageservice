@@ -71,7 +71,7 @@ use lsp_types::SelectionRange;
 #[cfg(feature = "formatter")]
 use lsp_types::TextEdit;
 #[cfg(any(feature = "links", feature = "symbols", feature = "rename"))]
-use lsp_types::Url;
+use lsp_types::Uri;
 #[cfg(feature = "rename")]
 use lsp_types::WorkspaceEdit;
 #[cfg(feature = "symbols")]
@@ -228,7 +228,7 @@ impl HTMLLanguageService {
     /// Finds all links in the document
     #[cfg(feature = "links")]
     pub fn find_document_links(
-        uri: &Url,
+        uri: &Uri,
         document: &FullTextDocument,
         document_context: &impl DocumentContext,
         data_manager: &HTMLDataManager,
@@ -239,7 +239,7 @@ impl HTMLLanguageService {
     /// Finds all the symbols in the document, it returns `SymbolInformation`
     #[cfg(feature = "symbols")]
     pub fn find_document_symbols(
-        uri: &Url,
+        uri: &Uri,
         document: &FullTextDocument,
         html_document: &HTMLDocument,
     ) -> Vec<SymbolInformation> {
@@ -278,7 +278,7 @@ impl HTMLLanguageService {
     /// Rename the matching tag
     #[cfg(feature = "rename")]
     pub fn do_rename(
-        uri: Url,
+        uri: Uri,
         document: &FullTextDocument,
         position: Position,
         new_name: &str,

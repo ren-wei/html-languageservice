@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use lsp_textdocument::FullTextDocument;
-use lsp_types::{Position, Range, TextEdit, Url, WorkspaceEdit};
+use lsp_types::{Position, Range, TextEdit, Uri, WorkspaceEdit};
 
 use crate::parser::html_document::{HTMLDocument, Node};
 
 pub fn do_rename(
-    uri: Url,
+    uri: Uri,
     document: &FullTextDocument,
     position: Position,
     new_name: &str,
@@ -38,7 +38,7 @@ pub fn do_rename(
         edits.push(TextEdit::new(end_tag_range, new_name.to_string()));
     }
 
-    let changes: HashMap<Url, Vec<TextEdit>> = HashMap::from([(uri, edits)]);
+    let changes: HashMap<Uri, Vec<TextEdit>> = HashMap::from([(uri, edits)]);
 
     Some(WorkspaceEdit::new(changes))
 }
