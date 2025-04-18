@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use multi_line_stream::MultiLineStream;
 use regex::Regex;
 
 lazy_static! {
@@ -98,7 +99,7 @@ impl Scanner<'_> {
     }
 
     pub fn get_source_len(&self) -> usize {
-        self.stream.len
+        self.stream.source.len()
     }
 
     fn internal_scan(&mut self) -> TokenType {
@@ -138,7 +139,7 @@ impl Scanner<'_> {
                             self.state = ScannerState::WithinComment;
                             return self.finish_token(offset, TokenType::StartCommentTag, None);
                         }
-                        if self.stream.advance_if_regexp(&REG_DOCTYPE) != "" {
+                        if self.stream.advance_if_regexp(&REG_DOCTYPE).is_some() {
                             self.state = ScannerState::WithinDoctype;
                             return self.finish_token(offset, TokenType::StartDoctypeTag, None);
                         }
@@ -303,8 +304,8 @@ impl Scanner<'_> {
                 }
                 let cur_char = self.stream.peek_char(0);
                 let prev_char = self.stream.peek_char(-1);
-                let mut attribute_value = self.stream.advance_if_regexp(&REG_NON_SPECIAL_START);
-                if attribute_value.len() > 0 {
+                let attribute_value = self.stream.advance_if_regexp(&REG_NON_SPECIAL_START);
+                if let Some(mut attribute_value) = attribute_value {
                     let mut is_go_back = false;
                     if cur_char == Some(b'>') && prev_char == Some(b'/') {
                         // <foo bar=http://foo/>
@@ -333,13 +334,12 @@ impl Scanner<'_> {
                             self.stream.advance(1); // consume quote
                         }
                         if self.last_attribute_name == Some("type".to_string()) {
-                            let s =
-                                self.stream.get_source()[if offset + 1 > self.stream.pos() - 1 {
-                                    self.stream.pos() - 1..offset + 1
-                                } else {
-                                    offset + 1..self.stream.pos() - 1
-                                }]
-                                .to_string();
+                            let s = self.stream.source[if offset + 1 > self.stream.pos() - 1 {
+                                self.stream.pos() - 1..offset + 1
+                            } else {
+                                offset + 1..self.stream.pos() - 1
+                            }]
+                            .to_string();
                             self.last_type_value = if s.len() != 0 { Some(s) } else { None }
                         }
                         self.state = ScannerState::WithinTag;
@@ -357,16 +357,16 @@ impl Scanner<'_> {
                 let mut script_state: u8 = 1;
                 while !self.stream.eos() {
                     let m = self.stream.advance_if_regexp(&REG_SCRIPT_COMMENT);
-                    if m.len() == 0 {
+                    if m.is_none() {
                         self.stream.go_to_end();
                         return self.finish_token(offset, TokenType::Script, None);
-                    } else if m == "<!--" {
+                    } else if m == Some("<!--") {
                         if script_state == 1 {
                             script_state = 2;
                         }
-                    } else if m == "-->" {
+                    } else if m == Some("-->") {
                         script_state = 1;
-                    } else if &m[1..2] != "/" {
+                    } else if m.is_some_and(|m| &m[1..2] != "/") {
                         // <script
                         if script_state == 2 {
                             script_state = 3;
@@ -376,7 +376,7 @@ impl Scanner<'_> {
                         if script_state == 3 {
                             script_state = 2;
                         } else {
-                            let length = m.len();
+                            let length = m.map(|v| v.len()).unwrap_or_default();
                             self.stream.go_back(length); // to the beginning of the closing tag
                             break;
                         }
@@ -417,168 +417,19 @@ impl Scanner<'_> {
     }
 
     fn next_element_name(&mut self) -> Option<String> {
-        let s = self
-            .stream
-            .advance_if_regexp(&REG_ELEMENT_NAME)
-            .to_lowercase();
-        if s.len() != 0 {
-            Some(s)
-        } else {
-            None
-        }
+        Some(
+            self.stream
+                .advance_if_regexp(&REG_ELEMENT_NAME)?
+                .to_lowercase(),
+        )
     }
 
     fn next_attribute_name(&mut self) -> Option<String> {
-        let s = self
-            .stream
-            .advance_if_regexp(&REG_NON_ELEMENT_NAME)
-            .to_lowercase();
-        if s.len() != 0 {
-            Some(s)
-        } else {
-            None
-        }
-    }
-}
-
-struct MultiLineStream<'a> {
-    source: &'a str,
-    len: usize,
-    position: usize,
-}
-
-impl MultiLineStream<'_> {
-    pub fn new<'a>(source: &'a str, position: usize) -> MultiLineStream<'a> {
-        MultiLineStream {
-            source,
-            len: source.len(),
-            position,
-        }
-    }
-
-    pub fn eos(&self) -> bool {
-        self.len <= self.position
-    }
-
-    pub fn get_source(&self) -> &str {
-        self.source
-    }
-
-    pub fn pos(&self) -> usize {
-        self.position
-    }
-
-    pub fn go_back(&mut self, n: usize) {
-        self.position -= n;
-    }
-
-    pub fn advance(&mut self, n: usize) {
-        self.position += n;
-    }
-
-    pub fn go_to_end(&mut self) {
-        self.position = self.len;
-    }
-
-    pub fn peek_char(&self, n: isize) -> Option<u8> {
-        let index = if n >= 0 {
-            self.position + n as usize
-        } else {
-            self.position - (-n) as usize
-        };
-        Some(self.source.bytes().nth(index)?)
-    }
-
-    pub fn advance_if_char(&mut self, ch: u8) -> bool {
-        if let Some(char) = self.source.bytes().nth(self.position) {
-            if char == ch {
-                self.position += 1;
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn advance_if_chars(&mut self, ch: &str) -> bool {
-        if self.position + ch.len() > self.len {
-            return false;
-        }
-
-        if !self
-            .source
-            .get(self.position..self.position + ch.len())
-            .is_some_and(|v| v == ch)
-        {
-            return false;
-        }
-
-        self.advance(ch.len());
-        true
-    }
-
-    pub fn advance_if_regexp(&mut self, regexp: &Regex) -> &str {
-        let haystack = &self.source[self.position..];
-        if let Some(captures) = regexp.captures(haystack) {
-            let m = captures.get(0).unwrap();
-            self.position += m.end();
-            m.as_str()
-        } else {
-            ""
-        }
-    }
-
-    pub fn advance_until_regexp(&mut self, regexp: &Regex) -> &str {
-        let haystack = &self.source[self.position..];
-        if let Some(captures) = regexp.captures(haystack) {
-            let m = captures.get(0).unwrap();
-            self.position += m.start();
-            m.as_str()
-        } else {
-            self.go_to_end();
-            ""
-        }
-    }
-
-    pub fn advance_until_char(&mut self, ch: u8) -> bool {
-        while self.position < self.len {
-            if self.source.bytes().nth(self.position) == Some(ch) {
-                return true;
-            }
-            self.advance(1);
-        }
-        false
-    }
-
-    pub fn advance_until_chars(&mut self, ch: &str) -> bool {
-        while self.position + ch.len() <= self.len {
-            if self
-                .source
-                .get(self.position..self.position + ch.len())
-                .is_some_and(|v| v == ch)
-            {
-                return true;
-            }
-            self.advance(1);
-        }
-        self.go_to_end();
-        false
-    }
-
-    pub fn skip_whitespace(&mut self) -> bool {
-        let n = self.advance_while_char(|ch| vec![b' ', b'\t', b'\n', 12, b'\r'].contains(&ch));
-        n > 0
-    }
-
-    pub fn advance_while_char<F>(&mut self, condition: F) -> usize
-    where
-        F: Fn(u8) -> bool,
-    {
-        let pos_now = self.position;
-        while self.position < self.len && condition(self.source.bytes().nth(self.position).unwrap())
-        {
-            self.advance(1);
-        }
-        self.position - pos_now
+        Some(
+            self.stream
+                .advance_if_regexp(&REG_NON_ELEMENT_NAME)?
+                .to_lowercase(),
+        )
     }
 }
 
