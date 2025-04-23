@@ -46,7 +46,7 @@ symbols = []
 [dependencies]
 async-trait = "0.1.88"
 lazy_static = "1.5.0"
-lsp-textdocument = "0.4.0"
+lsp-textdocument = "0.4.2"
 lsp-types = "0.97.0"
 multi-line-stream = { version = "1.0.1", features = ["full"] }
 regex = "1.11.1"
