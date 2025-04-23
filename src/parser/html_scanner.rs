@@ -8,7 +8,7 @@ lazy_static! {
     static ref REG_SCRIPT_COMMENT: Regex = Regex::new(r"<!--|-->|<\/?script\s*\/?>?").unwrap();
     static ref REG_ELEMENT_NAME: Regex = Regex::new(r"^[_:\w][_:\w\-.\d]*").unwrap();
     static ref REG_NON_ELEMENT_NAME: Regex =
-        Regex::new(r#"^[^\s"'></=\x00-\x0F\x7F\x80-\x9F]*"#).unwrap();
+        Regex::new(r#"^[^\s"'></=\x00-\x0F\x7F\x80-\x9F]+"#).unwrap();
     static ref REG_STYLE: Regex = Regex::new(r"<\/style").unwrap();
 }
 
