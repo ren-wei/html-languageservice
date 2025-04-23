@@ -191,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "multi-line-stream"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d703965bcdd96261ce3baebc522de7f78b4bf39772244ee0cfa990e13aa80c76"
+checksum = "6aae1e24e3aadd4566a1bc7a9e8f1817ab4acd9d123bd6f32247d09442bb841b"
 dependencies = [
  "regex",
 ]
