@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use lazy_static::lazy_static;
 use multi_line_stream::MultiLineStream;
 use regex::Regex;
@@ -22,13 +24,13 @@ pub struct Scanner<'a> {
 
     emit_pseudo_close_tags: bool,
     has_space_after_tag: bool,
-    last_tag: Option<String>,
-    last_attribute_name: Option<String>,
-    last_type_value: Option<String>,
+    last_tag: Option<Cow<'a, str>>,
+    last_attribute_name: Option<Cow<'a, str>>,
+    last_type_value: Option<Cow<'a, str>>,
 }
 
-impl Scanner<'_> {
-    pub fn new<'a>(
+impl<'a> Scanner<'a> {
+    pub fn new(
         input: &'a str,
         initial_offset: usize,
         initial_state: ScannerState,
@@ -86,7 +88,7 @@ impl Scanner<'_> {
         self.stream.pos()
     }
 
-    pub fn get_token_text(&self) -> &str {
+    pub fn get_token_text(&self) -> &'a str {
         &self.stream.source[self.get_token_offset()..self.get_token_end()]
     }
 
@@ -253,14 +255,22 @@ impl Scanner<'_> {
                 }
                 if self.stream.advance_if_char(b'>') {
                     // >
-                    if self.last_tag == Some("script".to_string()) {
+                    if self
+                        .last_tag
+                        .as_ref()
+                        .is_some_and(|v| v.as_ref() == "script")
+                    {
                         if self.last_type_value.is_some() {
                             // stay in html
                             self.state = ScannerState::WithinContent;
                         } else {
                             self.state = ScannerState::WithinScriptContent;
                         }
-                    } else if self.last_tag == Some("style".to_string()) {
+                    } else if self
+                        .last_tag
+                        .as_ref()
+                        .is_some_and(|v| v.as_ref() == "style")
+                    {
                         self.state = ScannerState::WithinStyleContent;
                     } else {
                         self.state = ScannerState::WithinContent;
@@ -312,9 +322,17 @@ impl Scanner<'_> {
                         is_go_back = true;
                         attribute_value = &attribute_value[..attribute_value.len() - 1];
                     }
-                    if self.last_attribute_name == Some("type".to_string()) {
-                        let s = attribute_value.to_string();
-                        self.last_type_value = if s.len() != 0 { Some(s) } else { None };
+                    if self
+                        .last_attribute_name
+                        .as_ref()
+                        .is_some_and(|v| v.as_ref() == "type")
+                    {
+                        let s = attribute_value;
+                        self.last_type_value = if s.len() != 0 {
+                            Some(Cow::Borrowed(s))
+                        } else {
+                            None
+                        };
                     }
                     let attribute_value_len = attribute_value.len();
                     if is_go_back {
@@ -333,14 +351,21 @@ impl Scanner<'_> {
                         if self.stream.advance_until_char(ch) {
                             self.stream.advance(1); // consume quote
                         }
-                        if self.last_attribute_name == Some("type".to_string()) {
-                            let s = self.stream.source[if offset + 1 > self.stream.pos() - 1 {
+                        if self
+                            .last_attribute_name
+                            .as_ref()
+                            .is_some_and(|v| v.as_ref() == "type")
+                        {
+                            let s = &self.stream.source[if offset + 1 > self.stream.pos() - 1 {
                                 self.stream.pos() - 1..offset + 1
                             } else {
                                 offset + 1..self.stream.pos() - 1
-                            }]
-                            .to_string();
-                            self.last_type_value = if s.len() != 0 { Some(s) } else { None }
+                            }];
+                            self.last_type_value = if s.len() != 0 {
+                                Some(Cow::Borrowed(s))
+                            } else {
+                                None
+                            }
                         }
                         self.state = ScannerState::WithinTag;
                         self.has_space_after_tag = false;
@@ -416,20 +441,20 @@ impl Scanner<'_> {
         self.token_type
     }
 
-    fn next_element_name(&mut self) -> Option<String> {
-        Some(
+    fn next_element_name(&mut self) -> Option<Cow<'a, str>> {
+        Some(Cow::Owned(
             self.stream
                 .advance_if_regexp(&REG_ELEMENT_NAME)?
                 .to_lowercase(),
-        )
+        ))
     }
 
-    fn next_attribute_name(&mut self) -> Option<String> {
-        Some(
+    fn next_attribute_name(&mut self) -> Option<Cow<'a, str>> {
+        Some(Cow::Owned(
             self.stream
                 .advance_if_regexp(&REG_NON_ELEMENT_NAME)?
                 .to_lowercase(),
-        )
+        ))
     }
 }
 
