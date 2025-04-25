@@ -44,12 +44,10 @@ symbols = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1.88"
 lazy_static = "1.5.0"
 lsp-textdocument = "0.4.2"
 lsp-types = "0.97.0"
-multi-line-stream = { version = "1.1.0", features = ["full"] }
+multi-line-stream = { version = "1.1.1", features = ["full"] }
 regex = "1.11.1"
 serde = "1.0.219"
 serde_json = "1.0.140"
-tokio = { version = "1.44.2", features = ["full"]}
