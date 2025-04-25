@@ -127,7 +127,7 @@ impl HTMLLanguageService {
 
     /// Provide completion proposals for a given location
     #[cfg(feature = "completion")]
-    pub async fn do_complete(
+    pub fn do_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -136,16 +136,14 @@ impl HTMLLanguageService {
         settings: Option<&CompletionConfiguration>,
         data_manager: &HTMLDataManager,
     ) -> CompletionList {
-        self.html_completion
-            .do_complete(
-                document,
-                position,
-                html_document,
-                document_context,
-                settings,
-                data_manager,
-            )
-            .await
+        self.html_completion.do_complete(
+            document,
+            position,
+            html_document,
+            document_context,
+            settings,
+            data_manager,
+        )
     }
 
     /// Add additional completion items to the completion proposal
@@ -184,7 +182,7 @@ impl HTMLLanguageService {
 
     /// Provides hover information at a given location
     #[cfg(feature = "hover")]
-    pub async fn do_hover(
+    pub fn do_hover(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -194,7 +192,6 @@ impl HTMLLanguageService {
     ) -> Option<Hover> {
         self.html_hover
             .do_hover(document, position, html_document, options, data_manager)
-            .await
     }
 
     /// Add additional hover to the hover proposal

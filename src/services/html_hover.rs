@@ -43,7 +43,7 @@ impl HTMLHover {
         self.hover_participants = hover_participants;
     }
 
-    pub async fn do_hover(
+    pub fn do_hover(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -145,30 +145,22 @@ impl HTMLHover {
                 &mut context,
             );
             if match_attr.is_some() {
-                return self
-                    .get_attr_value_hover(
-                        &tag,
-                        &match_attr.unwrap(),
-                        attr_value,
-                        attr_value_range,
-                        &mut context,
-                    )
-                    .await;
+                return self.get_attr_value_hover(
+                    &tag,
+                    &match_attr.unwrap(),
+                    attr_value,
+                    attr_value_range,
+                    &mut context,
+                );
             }
         }
 
         for participant in &self.hover_participants {
-            let hover = participant
-                .on_html_content(HtmlContentContext {
-                    document: FullTextDocument::new(
-                        document.language_id().to_string(),
-                        document.version(),
-                        document.get_content(None).to_string(),
-                    ),
-                    html_document: html_document.clone(),
-                    position: *position,
-                })
-                .await;
+            let hover = participant.on_html_content(HtmlContentContext {
+                document,
+                html_document,
+                position: *position,
+            });
             if let Some(hover) = hover {
                 return Some(hover);
             }
@@ -262,7 +254,7 @@ impl HTMLHover {
         None
     }
 
-    async fn get_attr_value_hover<'a>(
+    fn get_attr_value_hover<'a>(
         &self,
         cur_tag: &str,
         cur_attr: &str,
@@ -271,21 +263,16 @@ impl HTMLHover {
         context: &mut HoverContext<'a>,
     ) -> Option<Hover> {
         for hover_participant in &self.hover_participants {
-            if let Some(hover) = hover_participant
-                .on_html_attribute_value(HtmlAttributeValueContext {
-                    document: FullTextDocument::new(
-                        context.document.language_id().to_string(),
-                        context.document.version(),
-                        context.document.get_content(None).to_string(),
-                    ),
-                    html_document: context.html_document.clone(),
+            if let Some(hover) =
+                hover_participant.on_html_attribute_value(HtmlAttributeValueContext {
+                    document: context.document,
+                    html_document: context.html_document,
                     position: *context.position,
-                    tag: cur_tag.to_string(),
-                    attribute: cur_attr.to_string(),
-                    value: cur_attr_value.to_string(),
+                    tag: cur_tag,
+                    attribute: cur_attr,
+                    value: cur_attr_value,
                     range,
                 })
-                .await
             {
                 return Some(hover);
             }

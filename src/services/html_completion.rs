@@ -50,7 +50,7 @@ impl HTMLCompletion {
         self.completion_participants = completion_participants;
     }
 
-    pub async fn do_complete(
+    pub fn do_complete(
         &self,
         document: &FullTextDocument,
         position: &Position,
@@ -156,20 +156,16 @@ impl HTMLCompletion {
                             offset,
                             TokenType::AttributeValue,
                         );
-                        content
-                            .collect_attribute_value_suggestions(offset, end_pos)
-                            .await;
+                        content.collect_attribute_value_suggestions(offset, end_pos);
                         return result;
                     }
                 }
                 TokenType::AttributeValue => {
                     if scanner.get_token_offset() <= offset && offset <= scanner.get_token_end() {
-                        content
-                            .collect_attribute_value_suggestions(
-                                scanner.get_token_offset(),
-                                scanner.get_token_end(),
-                            )
-                            .await;
+                        content.collect_attribute_value_suggestions(
+                            scanner.get_token_offset(),
+                            scanner.get_token_end(),
+                        );
                         return result;
                     }
                 }
@@ -202,12 +198,10 @@ impl HTMLCompletion {
                                 return result;
                             }
                             ScannerState::BeforeAttributeValue => {
-                                content
-                                    .collect_attribute_value_suggestions(
-                                        scanner.get_token_end(),
-                                        offset,
-                                    )
-                                    .await;
+                                content.collect_attribute_value_suggestions(
+                                    scanner.get_token_end(),
+                                    offset,
+                                );
                                 return result;
                             }
                             ScannerState::AfterOpeningEndTag => {
@@ -219,7 +213,7 @@ impl HTMLCompletion {
                                 return result;
                             }
                             ScannerState::WithinContent => {
-                                content.collect_inside_content().await;
+                                content.collect_inside_content();
                                 return result;
                             }
                             _ => {}
@@ -239,7 +233,7 @@ impl HTMLCompletion {
                 }
                 TokenType::Content => {
                     if offset <= scanner.get_token_end() {
-                        content.collect_inside_content().await;
+                        content.collect_inside_content();
                         return result;
                     }
                 }
@@ -412,7 +406,7 @@ impl HTMLCompletion {
                     if document.get_content(None).get(offset..offset + 1) != Some(">") {
                         return Some(format!("{}>", node_tag));
                     } else {
-                        return Some(node_tag.clone());
+                        return Some(node_tag.to_string());
                     }
                 }
                 token = scanner.scan();
@@ -621,7 +615,7 @@ impl CompletionContext<'_> {
             for attr in node.attribute_names() {
                 if attr.starts_with(data_attr)
                     && !data_attributes.contains_key(&attr[..])
-                    && !existing_attributes.contains_key(attr)
+                    && !existing_attributes.contains_key(&attr[..])
                 {
                     data_attributes.insert(attr.to_string(), format!(r#"{attr}="$1""#));
                 }
@@ -649,7 +643,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    async fn collect_attribute_value_suggestions(&mut self, value_start: usize, value_end: usize) {
+    fn collect_attribute_value_suggestions(&mut self, value_start: usize, value_end: usize) {
         let range: Range;
         let add_quotes: bool;
         let value_prefix;
@@ -693,23 +687,19 @@ impl CompletionContext<'_> {
             let attribute = self.current_attribute_name.to_lowercase();
             let full_range = self.get_replace_range(value_start, value_end);
             for participant in self.completion_participants {
-                self.result.items.append(
-                    &mut participant
-                        .on_html_attribute_value(HtmlAttributeValueContext {
-                            document: FullTextDocument::new(
-                                self.document.language_id().to_string(),
-                                self.document.version(),
-                                self.document.get_content(None).to_string(),
-                            ),
-                            html_document: self.html_document.clone(),
+                self.result
+                    .items
+                    .append(
+                        &mut participant.on_html_attribute_value(HtmlAttributeValueContext {
+                            document: self.document,
+                            html_document: self.html_document,
                             position: *self.position,
-                            tag: tag.clone(),
-                            attribute: attribute.clone(),
-                            value: value_prefix.to_string(),
+                            tag: &tag,
+                            attribute: &attribute,
+                            value: value_prefix,
                             range: full_range,
-                        })
-                        .await,
-                );
+                        }),
+                    );
             }
         }
 
@@ -875,21 +865,15 @@ impl CompletionContext<'_> {
         }
     }
 
-    async fn collect_inside_content(&mut self) {
+    fn collect_inside_content(&mut self) {
         for participant in self.completion_participants {
-            self.result.items.append(
-                &mut participant
-                    .on_html_content(HtmlContentContext {
-                        document: FullTextDocument::new(
-                            self.document.language_id().to_string(),
-                            self.document.version(),
-                            self.document.get_content(None).to_string(),
-                        ),
-                        html_document: self.html_document.clone(),
-                        position: *self.position,
-                    })
-                    .await,
-            );
+            self.result
+                .items
+                .append(&mut participant.on_html_content(HtmlContentContext {
+                    document: self.document,
+                    html_document: self.html_document,
+                    position: *self.position,
+                }));
         }
         self.collect_character_entity_proposals();
     }

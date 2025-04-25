@@ -1,36 +1,33 @@
-use async_trait::async_trait;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{CompletionItem, Hover, Position, Range};
 
 use crate::parser::html_document::HTMLDocument;
 
-#[async_trait]
 pub trait ICompletionParticipant: Send + Sync {
-    async fn on_html_attribute_value(
-        &self,
-        context: HtmlAttributeValueContext,
-    ) -> Vec<CompletionItem>;
-    async fn on_html_content(&self, context: HtmlContentContext) -> Vec<CompletionItem>;
+    fn on_html_attribute_value(&self, context: HtmlAttributeValueContext) -> Vec<CompletionItem>;
+    fn on_html_content(&self, context: HtmlContentContext) -> Vec<CompletionItem>;
 }
 
-#[async_trait]
 pub trait IHoverParticipant: Send + Sync {
-    async fn on_html_attribute_value(&self, context: HtmlAttributeValueContext) -> Option<Hover>;
-    async fn on_html_content(&self, context: HtmlContentContext) -> Option<Hover>;
+    fn on_html_attribute_value<'a>(
+        &'a self,
+        context: HtmlAttributeValueContext<'a>,
+    ) -> Option<Hover>;
+    fn on_html_content<'a>(&'a self, context: HtmlContentContext<'a>) -> Option<Hover>;
 }
 
-pub struct HtmlAttributeValueContext {
-    pub document: FullTextDocument,
-    pub html_document: HTMLDocument,
+pub struct HtmlAttributeValueContext<'a> {
+    pub document: &'a FullTextDocument,
+    pub html_document: &'a HTMLDocument,
     pub position: Position,
-    pub tag: String,
-    pub attribute: String,
-    pub value: String,
+    pub tag: &'a str,
+    pub attribute: &'a str,
+    pub value: &'a str,
     pub range: Range,
 }
 
-pub struct HtmlContentContext {
-    pub document: FullTextDocument,
-    pub html_document: HTMLDocument,
+pub struct HtmlContentContext<'a> {
+    pub document: &'a FullTextDocument,
+    pub html_document: &'a HTMLDocument,
     pub position: Position,
 }

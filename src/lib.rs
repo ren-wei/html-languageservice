@@ -11,8 +11,7 @@
 //! use lsp_textdocument::FullTextDocument;
 //! use lsp_types::Position;
 //!
-//! #[tokio::main]
-//! async fn main() {
+//! fn main() {
 //!     // prepare
 //!     let document = FullTextDocument::new("html".to_string(), 1, "<div></div>".to_string());
 //!     let position = Position::new(0, 1);

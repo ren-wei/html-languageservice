@@ -10,7 +10,7 @@ use html_languageservice::{
 };
 
 #[cfg(feature = "hover")]
-async fn assert_hover(
+fn assert_hover(
     value: &str,
     expected_hover_content: Option<MarkupContent>,
     expected_hover_offset: Option<u32>,
@@ -24,9 +24,7 @@ async fn assert_hover(
     let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
     let data_manager = HTMLDataManager::default();
     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
-    let hover = ls
-        .do_hover(&document, &position, &html_document, None, &data_manager)
-        .await;
+    let hover = ls.do_hover(&document, &position, &html_document, None, &data_manager);
     if let Some(hover) = hover {
         assert_eq!(
             hover.clone().contents,
@@ -43,7 +41,7 @@ async fn assert_hover(
 }
 
 #[cfg(feature = "hover")]
-async fn assert_hover_range(
+fn assert_hover_range(
     value: &str,
     contents: HoverContents,
     range_text: &str,
@@ -64,15 +62,13 @@ async fn assert_hover_range(
 
     let data_manager = HTMLDataManager::default();
     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
-    let hover = ls
-        .do_hover(
-            &document,
-            &position,
-            &html_document,
-            hover_setting,
-            &data_manager,
-        )
-        .await;
+    let hover = ls.do_hover(
+        &document,
+        &position,
+        &html_document,
+        hover_setting,
+        &data_manager,
+    );
     if let Some(hover) = hover {
         assert_eq!(hover.contents, contents);
         if hover.range.is_some() {
@@ -82,8 +78,8 @@ async fn assert_hover_range(
 }
 
 #[cfg(feature = "hover")]
-#[tokio::test]
-async fn single() {
+#[test]
+fn single() {
     let description_and_reference = "The html element represents the root of an HTML document."
         .to_string()
         + "\n\n"
@@ -98,19 +94,19 @@ async fn single() {
         value: description_and_reference.clone(),
     };
 
-    assert_hover("|<html></html>", None, None).await;
-    assert_hover("<|html></html>", Some(html_content.clone()), Some(1)).await;
-    assert_hover("<h|tml></html>", Some(html_content.clone()), Some(1)).await;
-    assert_hover("<htm|l></html>", Some(html_content.clone()), Some(1)).await;
-    assert_hover("<html|></html>", Some(html_content.clone()), Some(1)).await;
-    assert_hover("<html>|</html>", None, None).await;
-    assert_hover("<html><|/html>", None, None).await;
-    assert_hover("<html></|html>", Some(close_html_content.clone()), Some(8)).await;
-    assert_hover("<html></h|tml>", Some(close_html_content.clone()), Some(8)).await;
-    assert_hover("<html></ht|ml>", Some(close_html_content.clone()), Some(8)).await;
-    assert_hover("<html></htm|l>", Some(close_html_content.clone()), Some(8)).await;
-    assert_hover("<html></html|>", Some(close_html_content.clone()), Some(8)).await;
-    assert_hover("<html></html>|", None, None).await;
+    assert_hover("|<html></html>", None, None);
+    assert_hover("<|html></html>", Some(html_content.clone()), Some(1));
+    assert_hover("<h|tml></html>", Some(html_content.clone()), Some(1));
+    assert_hover("<htm|l></html>", Some(html_content.clone()), Some(1));
+    assert_hover("<html|></html>", Some(html_content.clone()), Some(1));
+    assert_hover("<html>|</html>", None, None);
+    assert_hover("<html><|/html>", None, None);
+    assert_hover("<html></|html>", Some(close_html_content.clone()), Some(8));
+    assert_hover("<html></h|tml>", Some(close_html_content.clone()), Some(8));
+    assert_hover("<html></ht|ml>", Some(close_html_content.clone()), Some(8));
+    assert_hover("<html></htm|l>", Some(close_html_content.clone()), Some(8));
+    assert_hover("<html></html|>", Some(close_html_content.clone()), Some(8));
+    assert_hover("<html></html>|", None, None);
 
     let entity_description =
         "Character entity representing '\u{00A0}', unicode equivalent 'U+00A0'";
@@ -124,8 +120,7 @@ async fn single() {
         "",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&|nbsp;</html>",
         HoverContents::Markup(MarkupContent {
@@ -135,8 +130,7 @@ async fn single() {
         "nbsp;",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&n|bsp;</html>",
         HoverContents::Markup(MarkupContent {
@@ -146,8 +140,7 @@ async fn single() {
         "nbsp;",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&nb|sp;</html>",
         HoverContents::Markup(MarkupContent {
@@ -157,8 +150,7 @@ async fn single() {
         "nbsp;",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&nbs|p;</html>",
         HoverContents::Markup(MarkupContent {
@@ -168,8 +160,7 @@ async fn single() {
         "nbsp;",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&nbsp|;</html>",
         HoverContents::Markup(MarkupContent {
@@ -179,8 +170,7 @@ async fn single() {
         "nbsp;",
         None,
         None,
-    )
-    .await;
+    );
     assert_hover_range(
         "<html>&nbsp;|</html>",
         HoverContents::Markup(MarkupContent {
@@ -190,8 +180,7 @@ async fn single() {
         "",
         None,
         None,
-    )
-    .await;
+    );
 
     let no_description = MarkupContent {
         kind: MarkupKind::Markdown,
@@ -207,8 +196,7 @@ async fn single() {
             documentation: false,
             references: true,
         }),
-    )
-    .await;
+    );
 
     let no_references = MarkupContent {
         kind: MarkupKind::Markdown,
@@ -223,6 +211,5 @@ async fn single() {
             documentation: true,
             references: false,
         }),
-    )
-    .await;
+    );
 }

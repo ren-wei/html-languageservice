@@ -12,7 +12,7 @@ use lsp_textdocument::FullTextDocument;
 use lsp_types::*;
 
 #[cfg(feature = "completion")]
-async fn test_completion_for(
+fn test_completion_for(
     value: &str,
     expected: Expected,
     settings: Option<CompletionConfiguration>,
@@ -32,16 +32,14 @@ async fn test_completion_for(
     let position = document.position_at(offset as u32);
     let html_document =
         HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
-    let list = ls
-        .do_complete(
-            &document,
-            &position,
-            &html_document,
-            DefaultDocumentContext,
-            settings.as_ref(),
-            &HTMLDataManager::default(),
-        )
-        .await;
+    let list = ls.do_complete(
+        &document,
+        &position,
+        &html_document,
+        DefaultDocumentContext,
+        settings.as_ref(),
+        &HTMLDataManager::default(),
+    );
 
     // no duplicate labels
     let mut labels: Vec<String> = list.items.iter().map(|i| i.label.clone()).collect();
@@ -188,8 +186,8 @@ fn test_tag_completion(value: &str, expected: Option<String>) {
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn complete() {
+#[test]
+fn complete() {
     test_completion_for(
         "<|",
         Expected {
@@ -219,8 +217,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         "\n<|",
@@ -234,8 +231,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         "< |",
@@ -261,8 +257,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         "<h|",
@@ -288,8 +283,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<input|",
         Expected {
@@ -302,8 +296,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<inp|ut",
         Expected {
@@ -316,8 +309,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<|inp",
         Expected {
@@ -330,8 +322,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<input |",
         Expected {
@@ -356,8 +347,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<input t|",
         Expected {
@@ -377,8 +367,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<input t|ype",
         Expected {
@@ -398,8 +387,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input t|ype="text""#,
         Expected {
@@ -419,8 +407,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="text" |"#,
         Expected {
@@ -445,8 +432,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input | type="text""#,
         Expected {
@@ -471,8 +457,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="text" type="number" |"#,
         Expected {
@@ -497,8 +482,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="text" s|"#,
         Expected {
@@ -523,8 +507,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="text" s|"#,
         Expected {
@@ -549,8 +532,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         r#"<input di| type="text""#,
@@ -571,8 +553,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         r#"<input disabled | type="text""#,
@@ -593,8 +574,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         r#"<input type=|"#,
@@ -615,8 +595,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="c|"#,
         Expected {
@@ -636,8 +615,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type="|"#,
         Expected {
@@ -657,8 +635,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input type= |"#,
         Expected {
@@ -678,8 +655,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input src="c" type="color|" "#,
         Expected {
@@ -692,8 +668,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<iframe sandbox="allow-forms |"#,
         Expected {
@@ -706,8 +681,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<iframe sandbox="allow-forms allow-modals|"#,
         Expected {
@@ -720,8 +694,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<iframe sandbox="allow-forms all|""#,
         Expected {
@@ -734,8 +707,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<iframe sandbox="allow-forms a|llow-modals ""#,
         Expected {
@@ -748,8 +720,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<input src="c" type=color| "#,
         Expected {
@@ -762,8 +733,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<div dir=|></div>"#,
         Expected {
@@ -783,8 +753,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<ul><|>"#,
         Expected {
@@ -804,8 +773,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<ul><li><|"#,
         Expected {
@@ -825,8 +793,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<goo></|>"#,
         Expected {
@@ -839,8 +806,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<foo></f|"#,
         Expected {
@@ -853,8 +819,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<foo></f|o"#,
         Expected {
@@ -867,8 +832,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<foo></|fo"#,
         Expected {
@@ -881,8 +845,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<foo></ |>"#,
         Expected {
@@ -895,8 +858,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<span></ s|"#,
         Expected {
@@ -909,8 +871,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<li><br></ |>"#,
         Expected {
@@ -923,8 +884,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<li/|>",
         Expected {
@@ -933,8 +893,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "  <div/|   ",
         Expected {
@@ -943,8 +902,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<foo><br/></ f|>"#,
         Expected {
@@ -957,8 +915,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<li><div/></|"#,
         Expected {
@@ -971,8 +928,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<li><br/|>",
         Expected {
@@ -981,8 +937,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<li><br>a/|",
         Expected {
@@ -991,8 +946,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
 
     test_completion_for(
         r#"<foo><bar></bar></|   "#,
@@ -1006,8 +960,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
             "<div>\n  <form>\n    <div>\n      <label></label>\n      <|\n    </div>\n  </form></div>",
             Expected {
@@ -1031,7 +984,7 @@ async fn complete() {
             },
             None,
             None,
-        ).await;
+        );
     test_completion_for(
         r#"<body><div><div></div></div></|  >"#,
         Expected {
@@ -1044,8 +997,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<body>\n  <div>\n    </|",
         Expected {
@@ -1058,8 +1010,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div><a hre|</div>",
         Expected {
@@ -1072,8 +1023,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<a><b>foo</b><|f>",
         Expected {
@@ -1093,8 +1043,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<a><b>foo</b><| bar.",
         Expected {
@@ -1114,8 +1063,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div><h1><br><span></span><img></| </h1></div>",
         Expected {
@@ -1128,8 +1076,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div>|",
         Expected {
@@ -1142,8 +1089,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<div>|"#,
         Expected {
@@ -1160,8 +1106,7 @@ async fn complete() {
             provider: HashMap::new(),
         }),
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<div d|"#,
         Expected {
@@ -1174,8 +1119,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<div no-data-test="no-data" d|"#,
         Expected {
@@ -1188,8 +1132,7 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         r#"<div data-custom="test"><div d|"#,
         Expected {
@@ -1209,59 +1152,58 @@ async fn complete() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
-            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div d|"#,
-            Expected {
-                count: None,
-                items: vec![
-                    ItemDescription {
-                        label: "data-",
-                        result_text: Some(
-                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-$1="$2""#,
-                        ),
-                        ..Default::default()
-                    },
-                    ItemDescription {
-                        label: "data-custom",
-                        result_text: Some(
-                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom="$1""#,
-                        ),
-                        ..Default::default()
-                    },
-                    ItemDescription {
-                        label: "data-custom-two",
-                        result_text: Some(
-                            r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom-two="$1""#,
-                        ),
-                        ..Default::default()
-                    },
-                ],
-            },
-            None,
-            None,
-        ).await;
-    test_completion_for(
-            r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" inc|></div></body>"#,
-            Expected {
-                count: None,
-                items: vec![ItemDescription {
-                    label: "data-ng-include",
+        r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div d|"#,
+        Expected {
+            count: None,
+            items: vec![
+                ItemDescription {
+                    label: "data-",
                     result_text: Some(
-                        r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" data-ng-include="$1"></div></body>"#,
+                        r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-$1="$2""#,
                     ),
                     ..Default::default()
-                }],
-            },
-            None,
-            None,
-        ).await;
+                },
+                ItemDescription {
+                    label: "data-custom",
+                    result_text: Some(
+                        r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom="$1""#,
+                    ),
+                    ..Default::default()
+                },
+                ItemDescription {
+                    label: "data-custom-two",
+                    result_text: Some(
+                        r#"<div data-custom="test"><div data-custom-two="2"></div></div>\n <div data-custom-two="$1""#,
+                    ),
+                    ..Default::default()
+                },
+            ],
+        },
+        None,
+        None,
+    );
+    test_completion_for(
+        r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" inc|></div></body>"#,
+        Expected {
+            count: None,
+            items: vec![ItemDescription {
+                label: "data-ng-include",
+                result_text: Some(
+                    r#"<body data-ng-app=""><div id="first" data-ng-include=" 'firstdoc.html' "></div><div id="second" data-ng-include="$1"></div></body>"#,
+                ),
+                ..Default::default()
+            }],
+        },
+        None,
+        None,
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn references() {
+#[test]
+fn references() {
     let doc =
 			"The div element has no special meaning at all. It represents its children. It can be used with the class, lang, and title attributes to mark up semantics common to a group of consecutive elements.".to_string() +
 			"\n\n" +
@@ -1283,13 +1225,12 @@ async fn references() {
         },
         None,
         None,
-    )
-    .await;
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn case_sensitivity() {
+#[test]
+fn case_sensitivity() {
     test_completion_for(
         "<LI></|",
         Expected {
@@ -1309,8 +1250,7 @@ async fn case_sensitivity() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<lI></|",
         Expected {
@@ -1323,8 +1263,7 @@ async fn case_sensitivity() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<iNpUt |",
         Expected {
@@ -1337,8 +1276,7 @@ async fn case_sensitivity() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<INPUT TYPE=|",
         Expected {
@@ -1351,8 +1289,7 @@ async fn case_sensitivity() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<dIv>|",
         Expected {
@@ -1365,33 +1302,32 @@ async fn case_sensitivity() {
         },
         None,
         None,
-    )
-    .await;
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn handlebar_completion() {
+#[test]
+fn handlebar_completion() {
     test_completion_for(
-            r#"<script id="entry-template" type="text/x-handlebars-template"> <| </script>"#,
-            Expected {
-                count: None,
-                items: vec![ItemDescription {
-                    label: "div",
-                    result_text: Some(
-                        r#"<script id="entry-template" type="text/x-handlebars-template"> <div </script>"#,
-                    ),
-                    ..Default::default()
-                }],
-            },
-            None,
-            None,
-        ).await;
+        r#"<script id="entry-template" type="text/x-handlebars-template"> <| </script>"#,
+        Expected {
+            count: None,
+            items: vec![ItemDescription {
+                label: "div",
+                result_text: Some(
+                    r#"<script id="entry-template" type="text/x-handlebars-template"> <div </script>"#,
+                ),
+                ..Default::default()
+            }],
+        },
+        None,
+        None,
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn support_script_type() {
+#[test]
+fn support_script_type() {
     test_completion_for(
         r#"<script id="html-template" type="text/html"> <| </script>"#,
         Expected {
@@ -1404,13 +1340,12 @@ async fn support_script_type() {
         },
         None,
         None,
-    )
-    .await;
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn complete_aria() {
+#[test]
+fn complete_aria() {
     let expected_aria_attributes = vec![
         ItemDescription {
             label: "aria-activedescendant",
@@ -1606,8 +1541,7 @@ async fn complete_aria() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<span  |> </span >",
         Expected {
@@ -1616,8 +1550,7 @@ async fn complete_aria() {
         },
         None,
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<input  |> </input >",
         Expected {
@@ -1626,13 +1559,12 @@ async fn complete_aria() {
         },
         None,
         None,
-    )
-    .await;
+    );
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn settings() {
+#[test]
+fn settings() {
     test_completion_for(
         "<|",
         Expected {
@@ -1649,8 +1581,7 @@ async fn settings() {
             provider: HashMap::from([("html5".to_string(), false)]),
         }),
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div clas|",
         Expected {
@@ -1667,8 +1598,7 @@ async fn settings() {
             provider: HashMap::new(),
         }),
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div clas|",
         Expected {
@@ -1685,8 +1615,7 @@ async fn settings() {
             provider: HashMap::new(),
         }),
         None,
-    )
-    .await;
+    );
     test_completion_for(
         "<div clas|",
         Expected {
@@ -1703,8 +1632,7 @@ async fn settings() {
             provider: HashMap::new(),
         }),
         None,
-    )
-    .await;
+    );
 }
 
 #[cfg(feature = "completion")]
@@ -1744,8 +1672,8 @@ fn do_quote_complete() {
 }
 
 #[cfg(feature = "completion")]
-#[tokio::test]
-async fn do_tag_complete() {
+#[test]
+fn do_tag_complete() {
     test_tag_completion("<div>|", Some("$0</div>".to_string()));
     test_tag_completion("<div>|</div>", None);
     test_tag_completion(r#"<div class="">|"#, Some("$0</div>".to_string()));
