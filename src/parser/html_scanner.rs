@@ -27,6 +27,7 @@ pub struct Scanner<'a> {
     last_tag: Option<Cow<'a, str>>,
     last_attribute_name: Option<Cow<'a, str>>,
     last_type_value: Option<Cow<'a, str>>,
+    case_sensitive: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -35,6 +36,7 @@ impl<'a> Scanner<'a> {
         initial_offset: usize,
         initial_state: ScannerState,
         emit_pseudo_close_tags: bool,
+        case_sensitive: bool,
     ) -> Scanner<'a> {
         let stream = MultiLineStream::new(input, initial_offset);
         let token_offset = 0;
@@ -50,6 +52,7 @@ impl<'a> Scanner<'a> {
             last_tag: None,
             last_attribute_name: None,
             last_type_value: None,
+            case_sensitive,
         }
     }
 
@@ -442,19 +445,31 @@ impl<'a> Scanner<'a> {
     }
 
     fn next_element_name(&mut self) -> Option<Cow<'a, str>> {
-        Some(Cow::Owned(
-            self.stream
-                .advance_if_regexp(&REG_ELEMENT_NAME)?
-                .to_lowercase(),
-        ))
+        if self.case_sensitive {
+            Some(Cow::Borrowed(
+                self.stream.advance_if_regexp(&REG_ELEMENT_NAME)?,
+            ))
+        } else {
+            Some(Cow::Owned(
+                self.stream
+                    .advance_if_regexp(&REG_ELEMENT_NAME)?
+                    .to_lowercase(),
+            ))
+        }
     }
 
     fn next_attribute_name(&mut self) -> Option<Cow<'a, str>> {
-        Some(Cow::Owned(
-            self.stream
-                .advance_if_regexp(&REG_NON_ELEMENT_NAME)?
-                .to_lowercase(),
-        ))
+        if self.case_sensitive {
+            Some(Cow::Borrowed(
+                self.stream.advance_if_regexp(&REG_NON_ELEMENT_NAME)?,
+            ))
+        } else {
+            Some(Cow::Owned(
+                self.stream
+                    .advance_if_regexp(&REG_NON_ELEMENT_NAME)?
+                    .to_lowercase(),
+            ))
+        }
     }
 }
 
@@ -507,7 +522,7 @@ mod tests {
         let mut scanner_state = ScannerState::WithinContent;
 
         for t in tests {
-            let mut scanner = Scanner::new(&t.input, 0, scanner_state, false);
+            let mut scanner = Scanner::new(&t.input, 0, scanner_state, false, false);
             let mut token_type = scanner.scan();
             let mut actual = vec![];
             while token_type != TokenType::EOS {

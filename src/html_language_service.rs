@@ -1,5 +1,5 @@
-#[cfg(any(feature = "completion", feature = "hover"))]
 use crate::html_language_types::HTMLLanguageServiceOptions;
+use crate::language_facts::data_provider::IHTMLDataProvider;
 use crate::parser::html_document::HTMLDocument;
 use crate::parser::html_parse::HTMLParser;
 use crate::parser::html_scanner::{Scanner, ScannerState};
@@ -101,28 +101,48 @@ pub struct HTMLLanguageService {
     html_completion: HTMLCompletion,
     #[cfg(feature = "hover")]
     html_hover: HTMLHover,
+    case_sensitive: bool,
 }
 
 impl HTMLLanguageService {
-    #[cfg(any(feature = "completion", feature = "hover"))]
     pub fn new(options: &HTMLLanguageServiceOptions) -> HTMLLanguageService {
         HTMLLanguageService {
             #[cfg(feature = "completion")]
             html_completion: HTMLCompletion::new(options),
             #[cfg(feature = "hover")]
             html_hover: HTMLHover::new(options),
+            case_sensitive: options.case_sensitive.unwrap_or(false),
         }
     }
 
-    pub fn create_scanner(input: &str, initial_offset: usize) -> Scanner {
-        Scanner::new(input, initial_offset, ScannerState::WithinContent, false)
+    pub fn create_scanner<'a>(&self, input: &'a str, initial_offset: usize) -> Scanner<'a> {
+        Scanner::new(
+            input,
+            initial_offset,
+            ScannerState::WithinContent,
+            false,
+            self.case_sensitive,
+        )
+    }
+
+    pub fn create_data_manager(
+        &self,
+        use_default_data_provider: bool,
+        custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+    ) -> HTMLDataManager {
+        HTMLDataManager::new(
+            use_default_data_provider,
+            custom_data_providers,
+            self.case_sensitive,
+        )
     }
 
     pub fn parse_html_document(
+        &self,
         document: &FullTextDocument,
         data_manager: &HTMLDataManager,
     ) -> HTMLDocument {
-        HTMLParser::parse_document(document, data_manager)
+        HTMLParser::parse_document(document, data_manager, self.case_sensitive)
     }
 
     /// Provide completion proposals for a given location
@@ -159,12 +179,14 @@ impl HTMLLanguageService {
     /// Provide quotes completion when `=` is entered
     #[cfg(feature = "completion")]
     pub fn do_quote_complete(
+        &self,
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
         settings: Option<&CompletionConfiguration>,
     ) -> Option<String> {
-        HTMLCompletion::do_quote_complete(document, position, html_document, settings)
+        self.html_completion
+            .do_quote_complete(document, position, html_document, settings)
     }
 
     /// Completes the tag when `>` or `/` is entered
@@ -205,32 +227,46 @@ impl HTMLLanguageService {
     /// Note: `format` is not prefect, it's under development
     #[cfg(feature = "formatter")]
     pub fn format(
+        &self,
         document: &FullTextDocument,
         range: Option<Range>,
         options: &HTMLFormatConfiguration,
     ) -> Vec<TextEdit> {
-        html_formatter::format(document, &range, options)
+        html_formatter::format(document, &range, options, self.case_sensitive)
     }
 
     /// Provides document highlights capability
     #[cfg(feature = "highlight")]
     pub fn find_document_highlights(
+        &self,
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
     ) -> Vec<DocumentHighlight> {
-        html_highlight::find_document_highlights(document, position, html_document)
+        html_highlight::find_document_highlights(
+            document,
+            position,
+            html_document,
+            self.case_sensitive,
+        )
     }
 
     /// Finds all links in the document
     #[cfg(feature = "links")]
     pub fn find_document_links(
+        &self,
         uri: &Uri,
         document: &FullTextDocument,
         document_context: &impl DocumentContext,
         data_manager: &HTMLDataManager,
     ) -> Vec<DocumentLink> {
-        html_links::find_document_links(uri, document, document_context, data_manager)
+        html_links::find_document_links(
+            uri,
+            document,
+            document_context,
+            data_manager,
+            self.case_sensitive,
+        )
     }
 
     /// Finds all the symbols in the document, it returns `SymbolInformation`
@@ -255,21 +291,28 @@ impl HTMLLanguageService {
     /// Get folding ranges for the given document
     #[cfg(feature = "folding")]
     pub fn get_folding_ranges(
+        &self,
         document: FullTextDocument,
         context: FoldingRangeContext,
         data_manager: &HTMLDataManager,
     ) -> Vec<FoldingRange> {
-        html_folding::get_folding_ranges(document, context, data_manager)
+        html_folding::get_folding_ranges(document, context, data_manager, self.case_sensitive)
     }
 
     /// Get the selection ranges for the given document
     #[cfg(feature = "selection_range")]
     pub fn get_selection_ranges(
+        &self,
         document: &FullTextDocument,
         positions: &Vec<Position>,
         html_document: &HTMLDocument,
     ) -> Vec<SelectionRange> {
-        html_selection_range::get_selection_ranges(document, positions, html_document)
+        html_selection_range::get_selection_ranges(
+            document,
+            positions,
+            html_document,
+            self.case_sensitive,
+        )
     }
 
     /// Rename the matching tag

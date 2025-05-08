@@ -9,6 +9,8 @@ use lsp_types::{TextEdit, Uri};
 fn test_rename(value: &str, new_name: &str, expected: &str) {
     use std::str::FromStr;
 
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
 
@@ -16,8 +18,8 @@ fn test_rename(value: &str, new_name: &str, expected: &str) {
 
     let uri = Uri::from_str("test://test/test.html").unwrap();
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &HTMLDataManager::default());
 
     let workspace_edit =
         HTMLLanguageService::do_rename(uri.clone(), &document, position, new_name, &html_document);
@@ -45,6 +47,8 @@ fn test_rename(value: &str, new_name: &str, expected: &str) {
 fn test_no_rename(value: &str, new_name: &str) {
     use std::str::FromStr;
 
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
 
@@ -52,8 +56,8 @@ fn test_no_rename(value: &str, new_name: &str) {
 
     let uri = Uri::from_str("test://test/test.html").unwrap();
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &HTMLDataManager::default());
 
     let workspace_edit =
         HTMLLanguageService::do_rename(uri.clone(), &document, position, new_name, &html_document);

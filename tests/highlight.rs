@@ -5,6 +5,8 @@ use lsp_textdocument::FullTextDocument;
 
 #[cfg(feature = "highlight")]
 fn assert_highlights(value: &str, expected_matches: &[usize], element_name: Option<&str>) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let offset = value.find('|').unwrap();
     let value = format!("{}{}", &value[..offset], &value[offset + 1..]);
 
@@ -12,10 +14,12 @@ fn assert_highlights(value: &str, expected_matches: &[usize], element_name: Opti
 
     let position = document.position_at(offset as u32);
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
 
-    let hightlights =
-        HTMLLanguageService::find_document_highlights(&document, &position, &html_document);
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+
+    let html_document = ls.parse_html_document(&document, &data_manager);
+
+    let hightlights = ls.find_document_highlights(&document, &position, &html_document);
     assert_eq!(hightlights.len(), expected_matches.len());
 
     for (i, hightlight) in hightlights.iter().enumerate() {

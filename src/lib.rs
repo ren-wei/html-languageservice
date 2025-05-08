@@ -16,8 +16,9 @@
 //!     let document = FullTextDocument::new("html".to_string(), 1, "<div></div>".to_string());
 //!     let position = Position::new(0, 1);
 //!     // parse_html_document
-//!     let data_manager = HTMLDataManager::new(true, None);
-//!     let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
+//!     let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+//!     let data_manager = ls.create_data_manager(true, None);
+//!     let html_document = ls.parse_html_document(&document, &data_manager);
 //!     assert!(html_document.roots.len() > 0);
 //! }
 //! ```
@@ -34,7 +35,6 @@ mod services;
 mod utils;
 
 pub use language_facts::data_manager::HTMLDataManager;
-pub use parser::html_parse::parse_html_document;
 
 #[cfg(feature = "completion")]
 pub use services::html_completion::{CompletionConfiguration, Quotes};

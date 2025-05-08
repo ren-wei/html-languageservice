@@ -5,7 +5,10 @@ use lsp_textdocument::FullTextDocument;
 use lsp_types::{FoldingRange, FoldingRangeKind};
 use regex::Regex;
 
-use crate::{parser::html_scanner::TokenType, HTMLDataManager, HTMLLanguageService};
+use crate::{
+    parser::html_scanner::{Scanner, ScannerState, TokenType},
+    HTMLDataManager,
+};
 
 lazy_static! {
     static ref REG_REGION: Regex = Regex::new(r"^\s*#(region\b)|(endregion\b)").unwrap();
@@ -15,9 +18,16 @@ pub fn get_folding_ranges(
     document: FullTextDocument,
     context: FoldingRangeContext,
     data_manager: &HTMLDataManager,
+    case_sensitive: bool,
 ) -> Vec<FoldingRange> {
     let void_elements = data_manager.get_void_elements(document.language_id());
-    let mut scanner = HTMLLanguageService::create_scanner(document.get_content(None), 0);
+    let mut scanner = Scanner::new(
+        document.get_content(None),
+        0,
+        ScannerState::WithinContent,
+        false,
+        case_sensitive,
+    );
     let mut token = scanner.scan();
     let mut ranges = vec![];
     let mut stack = vec![]; // Vec<(startLine: usize, tag_name: String)>

@@ -3,22 +3,20 @@ use std::vec;
 use lsp_textdocument::FullTextDocument;
 use lsp_types::{Position, Range, SelectionRange};
 
-use crate::{
-    parser::{
-        html_document::{HTMLDocument, Node},
-        html_scanner::TokenType,
-    },
-    HTMLLanguageService,
+use crate::parser::{
+    html_document::{HTMLDocument, Node},
+    html_scanner::{Scanner, ScannerState, TokenType},
 };
 
 pub fn get_selection_ranges(
     document: &FullTextDocument,
     positions: &Vec<Position>,
     html_document: &HTMLDocument,
+    case_sensitive: bool,
 ) -> Vec<SelectionRange> {
     positions
         .iter()
-        .map(|position| get_selection_range(position, document, html_document))
+        .map(|position| get_selection_range(position, document, html_document, case_sensitive))
         .collect()
 }
 
@@ -26,8 +24,10 @@ fn get_selection_range(
     position: &Position,
     document: &FullTextDocument,
     html_document: &HTMLDocument,
+    case_sensitive: bool,
 ) -> SelectionRange {
-    let applicable_ranges = get_applicable_ranges(position, document, html_document);
+    let applicable_ranges =
+        get_applicable_ranges(position, document, html_document, case_sensitive);
     let mut prev: Option<(usize, usize)> = None;
     let mut current: Option<Box<SelectionRange>> = None;
     if applicable_ranges.len() > 0 {
@@ -65,6 +65,7 @@ fn get_applicable_ranges(
     position: &Position,
     document: &FullTextDocument,
     html_document: &HTMLDocument,
+    case_sensitive: bool,
 ) -> Vec<(usize, usize)> {
     let curr_offset = document.offset_at(*position) as usize;
     let mut parent_list = vec![];
@@ -95,7 +96,7 @@ fn get_applicable_ranges(
             }
 
             let mut attribute_level_ranges =
-                get_attribute_level_ranges(document, curr_node, curr_offset);
+                get_attribute_level_ranges(document, curr_node, curr_offset, case_sensitive);
             attribute_level_ranges.append(&mut result);
             result = attribute_level_ranges;
             return result;
@@ -116,7 +117,7 @@ fn get_applicable_ranges(
         if curr_node.start < curr_offset && curr_offset < start_tag_end {
             result.insert(0, (curr_node.start + 1, start_tag_end - 1));
             let mut attribute_level_ranges =
-                get_attribute_level_ranges(document, curr_node, curr_offset);
+                get_attribute_level_ranges(document, curr_node, curr_offset, case_sensitive);
             attribute_level_ranges.append(&mut result);
             result = attribute_level_ranges;
             return result;
@@ -174,6 +175,7 @@ fn get_attribute_level_ranges(
     document: &FullTextDocument,
     curr_node: &Node,
     curr_offset: usize,
+    case_sensitive: bool,
 ) -> Vec<(usize, usize)> {
     let curr_node_range = Range::new(
         document.position_at(curr_node.start as u32),
@@ -184,7 +186,13 @@ fn get_attribute_level_ranges(
 
     // Tag level semantic selection
 
-    let mut scanner = HTMLLanguageService::create_scanner(curr_node_text, 0);
+    let mut scanner = Scanner::new(
+        curr_node_text,
+        0,
+        ScannerState::WithinContent,
+        false,
+        case_sensitive,
+    );
     let mut token = scanner.scan();
 
     // For text like

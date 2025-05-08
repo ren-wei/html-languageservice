@@ -29,6 +29,7 @@ lazy_static! {
 pub struct HTMLHover {
     supports_markdown: bool,
     hover_participants: Vec<Box<dyn IHoverParticipant>>,
+    case_sensitive: bool,
 }
 
 impl HTMLHover {
@@ -36,6 +37,7 @@ impl HTMLHover {
         HTMLHover {
             supports_markdown: markdown::does_support_markdown(&ls_options),
             hover_participants: vec![],
+            case_sensitive: ls_options.case_sensitive.unwrap_or(false),
         }
     }
 
@@ -180,7 +182,12 @@ impl HTMLHover {
             let mut hover = None;
 
             for tag in provider.provide_tags() {
-                if tag.name.to_lowercase() == cur_tag.to_lowercase() {
+                let equal = if self.case_sensitive {
+                    tag.name == cur_tag
+                } else {
+                    tag.name.to_lowercase() == cur_tag.to_lowercase()
+                };
+                if equal {
                     let markup_content = data_provider::generate_documentation(
                         GenerateDocumentationItem {
                             description: tag.description.clone(),
@@ -363,6 +370,7 @@ impl HTMLHover {
             start_offset,
             ScannerState::WithinContent,
             false,
+            self.case_sensitive,
         );
         let mut token = scanner.scan();
         while token != TokenType::EOS
@@ -462,6 +470,7 @@ impl HTMLHover {
             node_start,
             ScannerState::WithinContent,
             false,
+            self.case_sensitive,
         );
         let mut token = scanner.scan();
         let mut prev_attr = None;

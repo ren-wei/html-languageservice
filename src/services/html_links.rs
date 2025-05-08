@@ -24,6 +24,7 @@ pub fn find_document_links(
     document: &FullTextDocument,
     document_context: &impl DocumentContext,
     data_manager: &HTMLDataManager,
+    case_sensitive: bool,
 ) -> Vec<DocumentLink> {
     let mut links = vec![];
     let mut scanner = Scanner::new(
@@ -31,6 +32,7 @@ pub fn find_document_links(
         0,
         ScannerState::WithinContent,
         false,
+        case_sensitive,
     );
     let mut last_attribute_name = None;
     let mut last_tag_name = None;
@@ -42,13 +44,21 @@ pub fn find_document_links(
     while token != TokenType::EOS {
         match token {
             TokenType::StartTag => {
-                last_tag_name = Some(scanner.get_token_text().to_lowercase());
+                if case_sensitive {
+                    last_tag_name = Some(scanner.get_token_text().to_string());
+                } else {
+                    last_tag_name = Some(scanner.get_token_text().to_lowercase());
+                }
                 if !in_base_tag {
                     in_base_tag = last_tag_name.as_ref().unwrap() == "base";
                 }
             }
             TokenType::AttributeName => {
-                last_attribute_name = Some(scanner.get_token_text().to_lowercase());
+                if case_sensitive {
+                    last_attribute_name = Some(scanner.get_token_text().to_string());
+                } else {
+                    last_attribute_name = Some(scanner.get_token_text().to_lowercase());
+                }
             }
             TokenType::AttributeValue => {
                 if last_tag_name.is_some() && last_attribute_name.is_some() {

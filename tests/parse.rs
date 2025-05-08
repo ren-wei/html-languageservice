@@ -6,12 +6,13 @@ use html_languageservice::{
         html_parse::*,
         html_scanner::TokenType,
     },
-    HTMLDataManager,
+    HTMLLanguageService, HTMLLanguageServiceOptions,
 };
 
 fn parse(text: &str) -> HTMLDocument {
-    let data_manager = HTMLDataManager::new(true, None);
-    HTMLParser::parse(text, "html", &data_manager)
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let data_manager = ls.create_data_manager(true, None);
+    HTMLParser::parse(text, "html", &data_manager, false)
 }
 
 fn to_json(node: &Node) -> NodeJSON {

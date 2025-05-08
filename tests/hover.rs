@@ -23,7 +23,7 @@ fn assert_hover(
     let position = document.position_at(offset as u32);
     let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
+    let html_document = ls.parse_html_document(&document, &data_manager);
     let hover = ls.do_hover(&document, &position, &html_document, None, &data_manager);
     if let Some(hover) = hover {
         assert_eq!(
@@ -61,7 +61,7 @@ fn assert_hover_range(
     };
 
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
+    let html_document = ls.parse_html_document(&document, &data_manager);
     let hover = ls.do_hover(
         &document,
         &position,

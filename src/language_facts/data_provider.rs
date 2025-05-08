@@ -14,6 +14,7 @@ pub struct HTMLDataProvider {
     tag_map: HashMap<String, usize>,
     global_attributes: Vec<IAttributeData>,
     value_set_map: HashMap<String, Vec<IValueData>>,
+    case_sensitive: bool,
 }
 
 /// To implement that the data provider can provide information to the `HTMLDataManager`
@@ -28,7 +29,7 @@ pub trait IHTMLDataProvider: Send + Sync {
 }
 
 impl HTMLDataProvider {
-    pub fn new(id: String, custom_data: HTMLDataV1) -> HTMLDataProvider {
+    pub fn new(id: String, custom_data: HTMLDataV1, case_sensitive: bool) -> HTMLDataProvider {
         let mut tag_map = HashMap::new();
         if let Some(tags) = &custom_data.tags {
             for (i, tag) in tags.iter().enumerate() {
@@ -50,6 +51,7 @@ impl HTMLDataProvider {
             tag_map,
             global_attributes: custom_data.global_attributes.unwrap_or_default(),
             value_set_map,
+            case_sensitive,
         }
     }
 }
@@ -70,7 +72,12 @@ impl IHTMLDataProvider for HTMLDataProvider {
     fn provide_attributes(&self, tag: &str) -> Vec<&IAttributeData> {
         let mut attributes = vec![];
 
-        let tag_entry_index = self.tag_map.get(&tag.to_lowercase());
+        let tag = if self.case_sensitive {
+            tag
+        } else {
+            &tag.to_lowercase()
+        };
+        let tag_entry_index = self.tag_map.get(tag);
         if let Some(tag_entry_index) = tag_entry_index {
             let tag_entry = &self.tags[*tag_entry_index];
             for attribute in &tag_entry.attributes {
@@ -87,13 +94,27 @@ impl IHTMLDataProvider for HTMLDataProvider {
     fn provide_values(&self, tag: &str, attribute: &str) -> Vec<&IValueData> {
         let mut values = vec![];
 
-        let attribute = attribute.to_lowercase();
+        let attribute = if self.case_sensitive {
+            attribute
+        } else {
+            &attribute.to_lowercase()
+        };
 
-        let tag_entry = self.tag_map.get(&tag.to_lowercase());
+        let tag = if self.case_sensitive {
+            tag
+        } else {
+            &tag.to_lowercase()
+        };
+        let tag_entry = self.tag_map.get(tag);
         if let Some(tag_entry_index) = tag_entry {
             let tag_entry = &self.tags[*tag_entry_index];
             for a in &tag_entry.attributes {
-                if a.name.to_lowercase() == attribute {
+                let equal = if self.case_sensitive {
+                    a.name == attribute
+                } else {
+                    a.name.to_lowercase() == attribute
+                };
+                if equal {
                     if let Some(a_values) = &a.values {
                         for value in a_values {
                             values.push(value);
@@ -110,7 +131,12 @@ impl IHTMLDataProvider for HTMLDataProvider {
             }
         }
         for a in &self.global_attributes {
-            if a.name.to_lowercase() == attribute {
+            let equal = if self.case_sensitive {
+                a.name == attribute
+            } else {
+                a.name.to_lowercase() == attribute
+            };
+            if equal {
                 if let Some(a_values) = &a.values {
                     for value in a_values {
                         values.push(value);

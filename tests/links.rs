@@ -10,6 +10,8 @@ use lsp_types::{DocumentLink, Position, Range, Uri};
 
 #[cfg(feature = "links")]
 fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&str>) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let language_id = if let Some(index) = model_url.rfind(".") {
         let lang = model_url[index..].to_string();
         if lang == "hbs" {
@@ -23,12 +25,8 @@ fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&st
     let uri = Uri::from_str(model_url).unwrap();
     let document = FullTextDocument::new(language_id, 0, format!(r#"<a href="{}""#, token_content));
     let mut data_manager = HTMLDataManager::default();
-    let links = HTMLLanguageService::find_document_links(
-        &uri,
-        &document,
-        &DefaultDocumentContext,
-        &mut data_manager,
-    );
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let links = ls.find_document_links(&uri, &document, &DefaultDocumentContext, &mut data_manager);
     assert_eq!(
         if links.len() > 0 {
             links[0].target.as_ref().map(|v| v.to_string())
@@ -41,15 +39,13 @@ fn test_link_creation(model_url: &str, token_content: &str, expected: Option<&st
 
 #[cfg(feature = "links")]
 fn test_link_detection(value: &str, expected_links: Vec<DocumentLink>) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let uri = Uri::from_str("file:///test/data/abc/test.html").unwrap();
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let mut data_manager = HTMLDataManager::default();
-    let links = HTMLLanguageService::find_document_links(
-        &uri,
-        &document,
-        &DefaultDocumentContext,
-        &mut data_manager,
-    );
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let links = ls.find_document_links(&uri, &document, &DefaultDocumentContext, &mut data_manager);
 
     assert_eq!(links, expected_links);
 }

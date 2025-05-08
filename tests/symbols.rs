@@ -15,19 +15,23 @@ const TEST_URL: &'static str = "test://test/test.html";
 fn test_symbol_informations_for(value: &str, expected: Vec<SymbolInformation>) {
     use std::str::FromStr;
 
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let uri = Uri::from_str(&TEST_URL).unwrap();
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &mut HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &mut HTMLDataManager::default());
     let symbols = HTMLLanguageService::find_document_symbols(&uri, &document, &html_document);
     assert_eq!(symbols, expected);
 }
 
 #[cfg(feature = "symbols")]
 fn test_document_symbols_for(value: &str, expected: Vec<DocumentSymbol>) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &mut HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &mut HTMLDataManager::default());
     let symbols = HTMLLanguageService::find_document_symbols2(&document, &html_document);
     assert_eq!(symbols, expected);
 }

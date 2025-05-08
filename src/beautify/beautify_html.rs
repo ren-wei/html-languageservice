@@ -1,12 +1,18 @@
 use regex::Regex;
 
 use crate::{
-    parse_html_document, parser::html_document::Node,
-    services::html_formatter::HTMLFormatConfiguration, HTMLDataManager,
+    parser::{html_document::Node, html_parse::parse_html_document},
+    services::html_formatter::HTMLFormatConfiguration,
+    HTMLDataManager,
 };
 
-pub fn html_beautify(content: &str, options: &HTMLFormatConfiguration) -> String {
-    let html_document = parse_html_document(content, "html", &HTMLDataManager::default());
+pub fn html_beautify(
+    content: &str,
+    options: &HTMLFormatConfiguration,
+    case_sensitive: bool,
+) -> String {
+    let html_document =
+        parse_html_document(content, "html", &HTMLDataManager::default(), case_sensitive);
     let mut formated = String::new();
     for root in &html_document.roots {
         formated.push_str(&beautify_node(content, root, options, 0));

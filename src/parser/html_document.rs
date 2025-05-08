@@ -64,14 +64,18 @@ impl Node {
         self.end_tag_start.is_none()
     }
 
-    pub fn is_same_tag(&self, tag_in_lowercase: Option<&str>) -> bool {
+    /// if case_sensitive is false, then other_tag should be lowercase
+    pub fn is_same_tag(&self, target_tag: Option<&str>, case_sensitive: bool) -> bool {
         if self.tag.is_none() {
-            tag_in_lowercase.is_none()
+            target_tag.is_none()
         } else {
             let tag: &str = &self.tag.as_ref().unwrap();
-            tag_in_lowercase.is_some_and(|tag_in_lowercase| {
-                tag.len() == tag_in_lowercase.len() && tag.to_lowercase() == tag_in_lowercase
-            })
+            let tag = if case_sensitive {
+                tag
+            } else {
+                &tag.to_lowercase()
+            };
+            target_tag.is_some_and(|target_tag| tag == target_tag)
         }
     }
 
@@ -194,9 +198,9 @@ impl Node {
 /// To get the parent node of the target node, you can like this:
 ///
 /// ```rust
-/// use html_languageservice::{parse_html_document, HTMLDataManager};
+/// use html_languageservice::{parser::html_parse, HTMLDataManager};
 ///
-/// let html_document = parse_html_document("<div><h1>title</h1></div>", "html", &HTMLDataManager::default());
+/// let html_document = html_parse::parse_html_document("<div><h1>title</h1></div>", "html", &HTMLDataManager::default(), false);
 ///
 /// let mut parent_list = vec![];
 /// let node = html_document.find_node_at(9, &mut parent_list);

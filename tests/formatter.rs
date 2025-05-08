@@ -7,6 +7,8 @@ use lsp_types::*;
 
 #[cfg(feature = "formatter")]
 fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let range_start = unformatted.find('|');
     let range_end = unformatted.rfind('|');
     let mut range = None;
@@ -28,7 +30,8 @@ fn format(unformatted: &str, expected: &str, options: &HTMLFormatConfiguration) 
         FullTextDocument::new("html".to_string(), 0, unformatted.to_string())
     };
 
-    let edits = HTMLLanguageService::format(&document, range, &options);
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let edits = ls.format(&document, range, &options);
 
     let content = document.get_content(None);
     let mut formatted = content.to_string();

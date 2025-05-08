@@ -12,8 +12,11 @@ fn assert_ranges(
     message: Option<&str>,
     range_limit: Option<usize>,
 ) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let document = FullTextDocument::new("json".to_string(), 1, lines.join("\n"));
-    let actual = HTMLLanguageService::get_folding_ranges(
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let actual = ls.get_folding_ranges(
         document,
         FoldingRangeContext { range_limit },
         &HTMLDataManager::default(),

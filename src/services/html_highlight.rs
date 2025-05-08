@@ -10,6 +10,7 @@ pub fn find_document_highlights(
     document: &FullTextDocument,
     position: &Position,
     html_document: &HTMLDocument,
+    case_sensitive: bool,
 ) -> Vec<DocumentHighlight> {
     let offset = document.offset_at(*position);
     if let Some(node) = html_document.find_node_at(offset as usize, &mut vec![]) {
@@ -18,11 +19,17 @@ pub fn find_document_highlights(
         }
 
         let mut result = vec![];
-        let start_tag_range = get_tag_name_range(TokenType::StartTag, document, node.start);
+        let start_tag_range =
+            get_tag_name_range(TokenType::StartTag, document, node.start, case_sensitive);
         let end_tag_range = if node.is_self_closing() {
             None
         } else {
-            get_tag_name_range(TokenType::EndTag, document, node.end_tag_start.unwrap())
+            get_tag_name_range(
+                TokenType::EndTag,
+                document,
+                node.end_tag_start.unwrap(),
+                case_sensitive,
+            )
         };
 
         if start_tag_range.is_some_and(|range| covers(&range, position))
@@ -60,12 +67,14 @@ fn get_tag_name_range(
     token_type: TokenType,
     document: &FullTextDocument,
     start_offset: usize,
+    case_sensitive: bool,
 ) -> Option<Range> {
     let mut scanner = Scanner::new(
         document.get_content(None),
         start_offset,
         ScannerState::WithinContent,
         false,
+        case_sensitive,
     );
     let mut token = scanner.scan();
     while token != TokenType::EOS && token != token_type {

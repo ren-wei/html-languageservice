@@ -30,8 +30,8 @@ fn test_completion_for(
 
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
+    let data_manager = ls.create_data_manager(true, None);
+    let html_document = ls.parse_html_document(&document, &data_manager);
     let list = ls.do_complete(
         &document,
         &position,
@@ -162,10 +162,11 @@ fn test_quote_completion(
 
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::new(true, None));
-    let actual =
-        HTMLLanguageService::do_quote_complete(&document, &position, &html_document, options);
+
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let data_manager = ls.create_data_manager(true, None);
+    let html_document = ls.parse_html_document(&document, &data_manager);
+    let actual = ls.do_quote_complete(&document, &position, &html_document, options);
     assert_eq!(actual, expected);
 }
 
@@ -180,7 +181,7 @@ fn test_tag_completion(value: &str, expected: Option<String>) {
     let document = FullTextDocument::new("html".to_string(), 0, value.to_string());
     let position = document.position_at(offset as u32);
     let data_manager = HTMLDataManager::default();
-    let html_document = HTMLLanguageService::parse_html_document(&document, &data_manager);
+    let html_document = ls.parse_html_document(&document, &data_manager);
     let actual = ls.do_tag_complete(&document, &position, &html_document, &data_manager);
     assert_eq!(actual, expected);
 }

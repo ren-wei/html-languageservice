@@ -5,6 +5,8 @@ use lsp_textdocument::FullTextDocument;
 
 #[cfg(feature = "matching_tag_position")]
 fn test_matching_tag_position(content: &str) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let mut offset = content.find('|').unwrap();
     let mut value = format!("{}{}", &content[..offset], &content[offset + 1..]);
     let mirror_offset = value.find('$').unwrap();
@@ -16,8 +18,8 @@ fn test_matching_tag_position(content: &str) {
     let document = FullTextDocument::new("html".to_string(), 0, value);
 
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &HTMLDataManager::default());
 
     let mirror_position =
         HTMLLanguageService::find_matching_tag_position(&document, position, &html_document)

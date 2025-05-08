@@ -7,29 +7,15 @@ use lsp_types::{ClientCapabilities, Uri};
 
 #[derive(Default)]
 pub struct HTMLLanguageServiceOptions {
-    /**
-     * Unless set to false, the default HTML data provider will be used
-     * along with the providers from customDataProviders.
-     * Defaults to true.
-     */
-    pub use_default_data_provider: Option<bool>,
-
-    /**
-     * Provide data that could enhance the service's understanding of
-     * HTML tag / attribute / attribute-value
-     */
-    // pub custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
-
-    /**
-     * Abstract file system access away from the service.
-     * Used for path completion, etc.
-     */
+    /// Abstract file system access away from the service.
+    /// Used for path completion, etc.
     pub file_system_provider: Option<Box<dyn FileSystemProvider>>,
 
-    /**
-     * Describes the LSP capabilities the client supports.
-     */
+    /// Describes the LSP capabilities the client supports.
     pub client_capabilities: Option<ClientCapabilities>,
+
+    /// Whether the tag name and attribute name are case-sensitive, the default is `false`.
+    pub case_sensitive: Option<bool>,
 }
 
 pub trait FileSystemProvider: Send + Sync {

@@ -15,16 +15,23 @@ impl HTMLParser {
     pub fn parse_document(
         document: &FullTextDocument,
         data_manager: &HTMLDataManager,
+        case_sensitive: bool,
     ) -> HTMLDocument {
         HTMLParser::parse(
             document.get_content(None),
             &document.language_id(),
             data_manager,
+            case_sensitive,
         )
     }
 
-    pub fn parse(text: &str, language_id: &str, data_manager: &HTMLDataManager) -> HTMLDocument {
-        parse_html_document(text, language_id, &data_manager)
+    pub fn parse(
+        text: &str,
+        language_id: &str,
+        data_manager: &HTMLDataManager,
+        case_sensitive: bool,
+    ) -> HTMLDocument {
+        parse_html_document(text, language_id, &data_manager, case_sensitive)
     }
 }
 
@@ -32,9 +39,10 @@ pub fn parse_html_document(
     text: &str,
     language_id: &str,
     data_manager: &HTMLDataManager,
+    case_sensitive: bool,
 ) -> HTMLDocument {
     let void_elements = data_manager.get_void_elements(language_id);
-    let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent, true);
+    let mut scanner = Scanner::new(text, 0, ScannerState::WithinContent, true, case_sensitive);
 
     let mut html_document = Node::new(0, scanner.get_source_len(), vec![]);
     let mut cur = &mut html_document as *mut Node;
@@ -88,14 +96,20 @@ pub fn parse_html_document(
                     end_tag_name = None;
                 }
                 TokenType::EndTag => {
-                    end_tag_name = Some(scanner.get_token_text().to_string().to_lowercase());
+                    if case_sensitive {
+                        end_tag_name = Some(scanner.get_token_text().to_string());
+                    } else {
+                        end_tag_name = Some(scanner.get_token_text().to_lowercase());
+                    }
                 }
                 TokenType::EndTagClose => {
                     let mut node = cur;
                     let mut node_parent_list_length = parent_list.len();
                     let end_tag_name = end_tag_name.as_deref();
                     // see if we can find a matching tag
-                    while !(*node).is_same_tag(end_tag_name) && node_parent_list_length > 0 {
+                    while !(*node).is_same_tag(end_tag_name, case_sensitive)
+                        && node_parent_list_length > 0
+                    {
                         node_parent_list_length -= 1;
                         node = parent_list[node_parent_list_length];
                     }

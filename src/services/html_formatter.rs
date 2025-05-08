@@ -8,6 +8,7 @@ pub fn format(
     document: &FullTextDocument,
     range: &Option<Range>,
     options: &HTMLFormatConfiguration,
+    case_sensitive: bool,
 ) -> Vec<TextEdit> {
     let mut value = document.get_content(None);
     let mut initial_indent_level = 0;
@@ -83,7 +84,7 @@ pub fn format(
         )
     };
 
-    let mut result = html_beautify(&trim_left(value), &options);
+    let mut result = html_beautify(&trim_left(value), &options, case_sensitive);
 
     if initial_indent_level > 0 {
         let indent = if options.insert_spaces {

@@ -5,13 +5,15 @@ use lsp_textdocument::FullTextDocument;
 
 #[cfg(feature = "linked_editing")]
 fn test_linked_editing(content: &str, expected: Vec<(usize, &str)>) {
+    use html_languageservice::HTMLLanguageServiceOptions;
+
     let offset = content.find('|').unwrap();
     let value = format!("{}{}", &content[..offset], &content[offset + 1..]);
 
     let document = FullTextDocument::new("html".to_string(), 0, value);
     let position = document.position_at(offset as u32);
-    let html_document =
-        HTMLLanguageService::parse_html_document(&document, &HTMLDataManager::default());
+    let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
+    let html_document = ls.parse_html_document(&document, &HTMLDataManager::default());
 
     let synced_regions =
         HTMLLanguageService::find_linked_editing_ranges(&document, position, &html_document);

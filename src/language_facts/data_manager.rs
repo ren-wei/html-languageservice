@@ -11,15 +11,18 @@ use super::{
 /// It has standard data built-in and can be customized
 pub struct HTMLDataManager {
     data_providers: Vec<Box<dyn IHTMLDataProvider>>,
+    case_sensitive: bool,
 }
 
 impl HTMLDataManager {
-    pub fn new(
+    pub(crate) fn new(
         use_default_data_provider: bool,
         custom_data_providers: Option<Vec<Box<dyn IHTMLDataProvider>>>,
+        case_sensitive: bool,
     ) -> HTMLDataManager {
         let mut data_manager = HTMLDataManager {
             data_providers: vec![],
+            case_sensitive,
         };
         data_manager.set_data_providers(
             use_default_data_provider,
@@ -39,6 +42,7 @@ impl HTMLDataManager {
             self.data_providers.push(Box::new(HTMLDataProvider::new(
                 "html5".to_string(),
                 HTML_DATA_INSTANCE.clone(),
+                self.case_sensitive,
             )));
         }
         self.data_providers.append(&mut providers);
@@ -94,7 +98,7 @@ impl HTMLDataManager {
 
 impl Default for HTMLDataManager {
     fn default() -> Self {
-        HTMLDataManager::new(true, None)
+        HTMLDataManager::new(true, None, false)
     }
 }
 

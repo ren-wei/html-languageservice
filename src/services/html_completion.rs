@@ -33,6 +33,7 @@ lazy_static! {
 pub struct HTMLCompletion {
     supports_markdown: bool,
     completion_participants: Vec<Box<dyn ICompletionParticipant>>,
+    case_sensitive: bool,
 }
 
 impl HTMLCompletion {
@@ -40,6 +41,7 @@ impl HTMLCompletion {
         HTMLCompletion {
             supports_markdown: markdown::does_support_markdown(&ls_options),
             completion_participants: vec![],
+            case_sensitive: ls_options.case_sensitive.unwrap_or(false),
         }
     }
 
@@ -107,7 +109,13 @@ impl HTMLCompletion {
             data_manager,
         };
 
-        let mut scanner = Scanner::new(text, node.start, ScannerState::WithinContent, true);
+        let mut scanner = Scanner::new(
+            text,
+            node.start,
+            ScannerState::WithinContent,
+            true,
+            self.case_sensitive,
+        );
 
         let mut token = scanner.scan();
 
@@ -124,7 +132,7 @@ impl HTMLCompletion {
                         if position.line == 0 {
                             content.suggest_doctype(offset, end_pos);
                         }
-                        content.collect_tag_suggestions(offset, end_pos);
+                        content.collect_tag_suggestions(offset, end_pos, self.case_sensitive);
                         return result;
                     }
                 }
@@ -143,6 +151,7 @@ impl HTMLCompletion {
                         content.collect_attribute_name_suggestions(
                             scanner.get_token_offset(),
                             scanner.get_token_end(),
+                            self.case_sensitive,
                         );
                         return result;
                     }
@@ -156,7 +165,11 @@ impl HTMLCompletion {
                             offset,
                             TokenType::AttributeValue,
                         );
-                        content.collect_attribute_value_suggestions(offset, end_pos);
+                        content.collect_attribute_value_suggestions(
+                            offset,
+                            end_pos,
+                            self.case_sensitive,
+                        );
                         return result;
                     }
                 }
@@ -165,6 +178,7 @@ impl HTMLCompletion {
                         content.collect_attribute_value_suggestions(
                             scanner.get_token_offset(),
                             scanner.get_token_end(),
+                            self.case_sensitive,
                         );
                         return result;
                     }
@@ -180,13 +194,18 @@ impl HTMLCompletion {
                                     offset,
                                     TokenType::StartTag,
                                 );
-                                content.collect_tag_suggestions(start_pos, end_tag_pos);
+                                content.collect_tag_suggestions(
+                                    start_pos,
+                                    end_tag_pos,
+                                    self.case_sensitive,
+                                );
                                 return result;
                             }
                             ScannerState::WithinTag => {
                                 content.collect_attribute_name_suggestions(
                                     scanner.get_token_end(),
                                     offset,
+                                    self.case_sensitive,
                                 );
                                 return result;
                             }
@@ -194,6 +213,7 @@ impl HTMLCompletion {
                                 content.collect_attribute_name_suggestions(
                                     scanner.get_token_end(),
                                     offset,
+                                    self.case_sensitive,
                                 );
                                 return result;
                             }
@@ -201,6 +221,7 @@ impl HTMLCompletion {
                                 content.collect_attribute_value_suggestions(
                                     scanner.get_token_end(),
                                     offset,
+                                    self.case_sensitive,
                                 );
                                 return result;
                             }
@@ -209,6 +230,7 @@ impl HTMLCompletion {
                                     scanner.get_token_offset() - 1,
                                     false,
                                     offset,
+                                    self.case_sensitive,
                                 );
                                 return result;
                             }
@@ -250,6 +272,7 @@ impl HTMLCompletion {
                             after_open_bracket,
                             false,
                             end_offset,
+                            self.case_sensitive,
                         );
                         return result;
                     }
@@ -264,6 +287,7 @@ impl HTMLCompletion {
                                     start,
                                     false,
                                     scanner.get_token_end(),
+                                    self.case_sensitive,
                                 );
                                 return result;
                             } else if !is_white_space(&ch.unwrap().to_string()) {
@@ -286,6 +310,7 @@ impl HTMLCompletion {
     }
 
     pub fn do_quote_complete(
+        &self,
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
@@ -322,6 +347,7 @@ impl HTMLCompletion {
                 node.start,
                 ScannerState::WithinContent,
                 false,
+                self.case_sensitive,
             );
             let mut token = scanner.scan();
             while token != TokenType::EOS && scanner.get_token_end() <= offset {
@@ -371,6 +397,7 @@ impl HTMLCompletion {
                     node.start,
                     ScannerState::WithinContent,
                     false,
+                    self.case_sensitive,
                 );
                 let mut token = scanner.scan();
                 while token != TokenType::EOS && scanner.get_token_end() <= offset {
@@ -399,6 +426,7 @@ impl HTMLCompletion {
                 node.start,
                 ScannerState::WithinContent,
                 false,
+                self.case_sensitive,
             );
             let mut token = scanner.scan();
             while token != TokenType::EOS && scanner.get_token_end() <= offset {
@@ -463,9 +491,9 @@ impl CompletionContext<'_> {
         offset
     }
 
-    fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize) {
+    fn collect_tag_suggestions(&mut self, tag_start: usize, tag_end: usize, case_sensitive: bool) {
         self.collect_open_tag_suggestions(tag_start, tag_end);
-        self.collect_close_tag_suggestions(tag_start, true, tag_end);
+        self.collect_close_tag_suggestions(tag_start, true, tag_end, case_sensitive);
     }
 
     fn collect_open_tag_suggestions(&mut self, after_open_bracket: usize, tag_name_end: usize) {
@@ -503,7 +531,12 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_attribute_name_suggestions(&mut self, name_start: usize, name_end: usize) {
+    fn collect_attribute_name_suggestions(
+        &mut self,
+        name_start: usize,
+        name_end: usize,
+        case_sensitive: bool,
+    ) {
         let mut replace_end = self.offset;
         let text = self.document.get_content(None);
         while replace_end < name_end
@@ -525,6 +558,7 @@ impl CompletionContext<'_> {
             name_end,
             ScannerState::AfterAttributeName,
             TokenType::DelimiterAssign,
+            case_sensitive,
         ) {
             let quotes = if let Some(settings) = self.settings {
                 settings.attribute_default_value
@@ -643,7 +677,12 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn collect_attribute_value_suggestions(&mut self, value_start: usize, value_end: usize) {
+    fn collect_attribute_value_suggestions(
+        &mut self,
+        value_start: usize,
+        value_end: usize,
+        case_sensitive: bool,
+    ) {
         let range: Range;
         let add_quotes: bool;
         let value_prefix;
@@ -679,12 +718,17 @@ impl CompletionContext<'_> {
         }
 
         if self.completion_participants.len() > 0 {
-            let tag = self
-                .current_tag
-                .as_deref()
-                .unwrap_or_default()
-                .to_lowercase();
-            let attribute = self.current_attribute_name.to_lowercase();
+            let tag = self.current_tag.as_deref().unwrap_or_default();
+            let tag = if case_sensitive {
+                tag
+            } else {
+                &tag.to_lowercase()
+            };
+            let attribute = if case_sensitive {
+                &self.current_attribute_name
+            } else {
+                &self.current_attribute_name.to_lowercase()
+            };
             let full_range = self.get_replace_range(value_start, value_end);
             for participant in self.completion_participants {
                 self.result
@@ -751,6 +795,7 @@ impl CompletionContext<'_> {
         after_open_bracket: usize,
         in_open_tag: bool,
         tag_name_end: usize,
+        case_sensitive: bool,
     ) {
         let range = self.get_replace_range(after_open_bracket, tag_name_end);
         let close_tag = if is_followed_by(
@@ -758,6 +803,7 @@ impl CompletionContext<'_> {
             tag_name_end,
             ScannerState::WithinEndTag,
             TokenType::EndTagClose,
+            case_sensitive,
         ) {
             ""
         } else {
@@ -972,8 +1018,9 @@ fn is_followed_by(
     offset: usize,
     initial_state: ScannerState,
     expected_token: TokenType,
+    case_sensitive: bool,
 ) -> bool {
-    let mut scanner = Scanner::new(s, offset, initial_state, false);
+    let mut scanner = Scanner::new(s, offset, initial_state, false, case_sensitive);
     let mut token = scanner.scan();
     while token == TokenType::Whitespace {
         token = scanner.scan();
