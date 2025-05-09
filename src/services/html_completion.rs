@@ -12,7 +12,8 @@ use crate::{
     language_facts::{
         data_manager::HTMLDataManager,
         data_provider::{
-            self, GenerateDocumentationItem, GenerateDocumentationSetting, IHTMLDataProvider,
+            self, GenerateDocumentationItem, GenerateDocumentationSetting, HTMLDataProviderContent,
+            IHTMLDataProvider,
         },
     },
     parser::{
@@ -576,7 +577,14 @@ impl CompletionContext<'_> {
         existing_attributes.insert(current_attribute.to_string(), false);
 
         for provider in &self.data_providers {
-            for attr in provider.provide_attributes(&self.current_tag.as_ref().unwrap()) {
+            for attr in provider.provide_attributes(
+                &self.current_tag.as_ref().unwrap(),
+                &HTMLDataProviderContent {
+                    document: self.document,
+                    html_document: self.html_document,
+                    offset: self.offset,
+                },
+            ) {
                 if existing_attributes.get(&attr.name).is_some_and(|v| *v) {
                     continue;
                 }

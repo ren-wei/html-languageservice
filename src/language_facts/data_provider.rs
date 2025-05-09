@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
+use lsp_textdocument::FullTextDocument;
 use lsp_types::{MarkupContent, MarkupKind};
 
 use crate::{
     html_data::{Description, HTMLDataV1, IAttributeData, IReference, ITagData, IValueData},
+    parser::html_document::HTMLDocument,
     utils::markup,
 };
 
@@ -24,8 +26,18 @@ pub trait IHTMLDataProvider: Send + Sync {
     fn get_id(&self) -> &str;
     fn is_applicable(&self, language_id: &str) -> bool;
     fn provide_tags(&self) -> &Vec<ITagData>;
-    fn provide_attributes(&self, tag: &str) -> Vec<&IAttributeData>;
+    fn provide_attributes(
+        &self,
+        tag: &str,
+        content: &HTMLDataProviderContent<'_>,
+    ) -> Vec<&IAttributeData>;
     fn provide_values(&self, tag: &str, attribute: &str) -> Vec<&IValueData>;
+}
+
+pub struct HTMLDataProviderContent<'a> {
+    pub document: &'a FullTextDocument,
+    pub html_document: &'a HTMLDocument,
+    pub offset: usize,
 }
 
 impl HTMLDataProvider {
@@ -69,7 +81,11 @@ impl IHTMLDataProvider for HTMLDataProvider {
         &self.tags
     }
 
-    fn provide_attributes(&self, tag: &str) -> Vec<&IAttributeData> {
+    fn provide_attributes(
+        &self,
+        tag: &str,
+        _content: &HTMLDataProviderContent,
+    ) -> Vec<&IAttributeData> {
         let mut attributes = vec![];
 
         let tag = if self.case_sensitive {

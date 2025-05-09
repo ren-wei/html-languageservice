@@ -9,7 +9,8 @@ use crate::{
     language_facts::{
         data_manager::HTMLDataManager,
         data_provider::{
-            self, GenerateDocumentationItem, GenerateDocumentationSetting, IHTMLDataProvider,
+            self, GenerateDocumentationItem, GenerateDocumentationSetting, HTMLDataProviderContent,
+            IHTMLDataProvider,
         },
     },
     parser::{
@@ -230,7 +231,14 @@ impl HTMLHover {
         for provider in &context.data_providers {
             let mut hover = None;
 
-            for attr in provider.provide_attributes(cur_tag) {
+            for attr in provider.provide_attributes(
+                cur_tag,
+                &HTMLDataProviderContent {
+                    document: context.document,
+                    html_document: context.html_document,
+                    offset: context.offset,
+                },
+            ) {
                 if cur_attr == attr.name && attr.description.is_some() {
                     let contents = data_provider::generate_documentation(
                         GenerateDocumentationItem {
