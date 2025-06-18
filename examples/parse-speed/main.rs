@@ -13,5 +13,6 @@ fn main() {
     ls.parse_html_document(&document, &HTMLDataManager::default());
     let end_time = time::SystemTime::now();
     let duration = end_time.duration_since(start_time).unwrap();
+    // vscode-languageservice time: 55ms
     println!("{:?}", duration);
 }
