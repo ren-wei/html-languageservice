@@ -18,6 +18,17 @@ pub struct Node {
     pub attributes: HashMap<String, NodeAttribute>,
 }
 
+/// # Node attribute
+///
+/// The `value` is the value of the attribute at after '=' sign, including quotes.
+///
+/// The '=' sign must be immediately followed by the attribute name, otherwise it will be ignored.
+///
+/// ## Boundary cases
+///
+/// * The value is `None` if there is not '=' sign.
+///
+/// * The value is `Some("".to_string())` if the '=' sign is followed by a space.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeAttribute {
     /// include quote

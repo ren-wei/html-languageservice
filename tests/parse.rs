@@ -526,6 +526,60 @@ fn attributes_without_value() {
     );
 }
 
+#[test]
+fn attributes_without_start_quote() {
+    let input = r#"<div id=test"></div>"#;
+    assert_attributes(
+        input,
+        vec![NodeJSONWithAttributes {
+            tag: "div".to_string(),
+            attributes: HashMap::from([(
+                "id".to_string(),
+                NodeAttribute::new(Some(r#"test""#.to_string()), 5),
+            )]),
+            children: vec![],
+        }],
+    );
+}
+
+#[test]
+fn attributes_without_value_and_exist_equal() {
+    let input = r#"<div checked= id="test"></div>"#;
+    assert_attributes(
+        input,
+        vec![NodeJSONWithAttributes {
+            tag: "div".to_string(),
+            attributes: HashMap::from([
+                (
+                    "checked".to_string(),
+                    NodeAttribute::new(Some("".to_string()), 5),
+                ),
+                (
+                    "id".to_string(),
+                    NodeAttribute::new(Some(r#""test""#.to_string()), 14),
+                ),
+            ]),
+            children: vec![],
+        }],
+    );
+}
+
+#[test]
+fn attributes_ignore_equal_sign() {
+    let input = r#"<div = ="abc" id=test"></div>"#;
+    assert_attributes(
+        input,
+        vec![NodeJSONWithAttributes {
+            tag: "div".to_string(),
+            attributes: HashMap::from([(
+                "id".to_string(),
+                NodeAttribute::new(Some(r#"test""#.to_string()), 14),
+            )]),
+            children: vec![],
+        }],
+    );
+}
+
 #[derive(PartialEq, Debug)]
 struct NodeJSON {
     tag: String,

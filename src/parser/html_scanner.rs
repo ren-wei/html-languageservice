@@ -250,6 +250,9 @@ impl<'a> Scanner<'a> {
                         self.has_space_after_tag = false;
                         return self.finish_token(offset, TokenType::AttributeName, None);
                     }
+                    if self.stream.peek_char(0) == Some(b'=') {
+                        self.has_space_after_tag = false;
+                    }
                 }
                 if self.stream.advance_if_chars("/>") {
                     // />
@@ -313,6 +316,8 @@ impl<'a> Scanner<'a> {
 
             ScannerState::BeforeAttributeValue => {
                 if self.stream.skip_whitespace() {
+                    self.state = ScannerState::WithinTag;
+                    self.has_space_after_tag = true;
                     return self.finish_token(offset, TokenType::Whitespace, None);
                 }
                 let cur_char = self.stream.peek_char(0);
@@ -324,6 +329,10 @@ impl<'a> Scanner<'a> {
                         // <foo bar=http://foo/>
                         is_go_back = true;
                         attribute_value = &attribute_value[..attribute_value.len() - 1];
+                    }
+                    if self.stream.advance_if_char(b'\'') || self.stream.advance_if_char(b'"') {
+                        attribute_value = &self.stream.source
+                            [self.stream.pos() - attribute_value.len() - 1..self.stream.pos()]
                     }
                     if self
                         .last_attribute_name

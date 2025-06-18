@@ -643,13 +643,13 @@ fn complete() {
             count: None,
             items: vec![
                 ItemDescription {
-                    label: "color",
-                    result_text: Some(r#"<input type= "color""#),
+                    label: "dir",
+                    result_text: Some(r#"<input type= dir="$1""#),
                     ..Default::default()
                 },
                 ItemDescription {
-                    label: "checkbox",
-                    result_text: Some(r#"<input type= "checkbox""#),
+                    label: "style",
+                    result_text: Some(r#"<input type= style="$1""#),
                     ..Default::default()
                 },
             ],

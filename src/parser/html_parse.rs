@@ -133,13 +133,17 @@ pub fn parse_html_document(
                         NodeAttribute::new(None, scanner.get_token_offset()),
                     ); // Support valueless attributes such as 'checked'
                 }
+                TokenType::DelimiterAssign => {
+                    if let Some(attr) = &pending_attribute {
+                        let value = (*cur).attributes.get_mut(attr).unwrap();
+                        value.value = Some("".to_string());
+                    }
+                }
                 TokenType::AttributeValue => {
                     let text = scanner.get_token_text();
                     if let Some(attr) = pending_attribute {
-                        let offset = scanner.get_token_offset() - 1 - attr.len();
-                        (*cur)
-                            .attributes
-                            .insert(attr, NodeAttribute::new(Some(text.to_string()), offset));
+                        let value = (*cur).attributes.get_mut(&attr).unwrap();
+                        value.value = Some(text.to_string());
                         pending_attribute = None;
                     }
                 }
