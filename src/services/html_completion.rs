@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
@@ -442,6 +442,19 @@ impl HTMLCompletion {
             }
         }
         None
+    }
+}
+
+impl Debug for HTMLCompletion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HTMLCompletion")
+            .field("supports_markdown", &self.supports_markdown)
+            .field(
+                "completion_participants(len)",
+                &self.completion_participants.len(),
+            )
+            .field("case_sensitive", &self.case_sensitive)
+            .finish()
     }
 }
 

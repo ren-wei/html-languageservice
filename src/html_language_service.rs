@@ -96,6 +96,7 @@ use lsp_textdocument::FullTextDocument;
 /// - rename
 /// - matching_tag_position
 /// - linked_editing
+#[derive(Debug)]
 pub struct HTMLLanguageService {
     #[cfg(feature = "completion")]
     html_completion: HTMLCompletion,

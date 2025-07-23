@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use lazy_static::lazy_static;
 use lsp_textdocument::FullTextDocument;
@@ -535,6 +535,16 @@ impl HTMLHover {
             };
         }
         contents
+    }
+}
+
+impl Debug for HTMLHover {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HTMLHover")
+            .field("supports_markdown", &self.supports_markdown)
+            .field("hover_participants(len)", &self.hover_participants.len())
+            .field("case_sensitive", &self.case_sensitive)
+            .finish()
     }
 }
 

@@ -11,7 +11,7 @@ pub struct Node {
     pub children: Vec<Node>,
     /// Whether part of end tag exists
     pub closed: bool,
-    /// It's None only when new, it larger than end of start tag
+    /// It's None only when new or it miss close part of start tag, it larger than end of start tag
     pub start_tag_end: Option<usize>,
     /// It's None only when it's self-closing tag or it miss part of end tag, it equals start of end tag
     pub end_tag_start: Option<usize>,
