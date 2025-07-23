@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use lazy_static::lazy_static;
 use serde_json::{json, Value};
 
@@ -99,6 +101,15 @@ impl HTMLDataManager {
 impl Default for HTMLDataManager {
     fn default() -> Self {
         HTMLDataManager::new(true, None, false)
+    }
+}
+
+impl Debug for HTMLDataManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HTMLDataManager")
+            .field("data_providers(len)", &self.data_providers.len())
+            .field("case_sensitive", &self.case_sensitive)
+            .finish()
     }
 }
 
