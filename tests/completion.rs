@@ -36,7 +36,7 @@ fn test_completion_for(
         &document,
         &position,
         &html_document,
-        DefaultDocumentContext,
+        &DefaultDocumentContext,
         settings.as_ref(),
         &HTMLDataManager::default(),
     );

@@ -58,7 +58,7 @@ impl HTMLCompletion {
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
-        _document_context: impl DocumentContext,
+        _document_context: &impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
         data_manager: &HTMLDataManager,
     ) -> CompletionList {

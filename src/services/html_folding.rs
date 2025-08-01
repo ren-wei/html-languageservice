@@ -15,7 +15,7 @@ lazy_static! {
 }
 
 pub fn get_folding_ranges(
-    document: FullTextDocument,
+    document: &FullTextDocument,
     context: FoldingRangeContext,
     data_manager: &HTMLDataManager,
     case_sensitive: bool,

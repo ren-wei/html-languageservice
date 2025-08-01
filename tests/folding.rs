@@ -17,7 +17,7 @@ fn assert_ranges(
     let document = FullTextDocument::new("json".to_string(), 1, lines.join("\n"));
     let ls = HTMLLanguageService::new(&HTMLLanguageServiceOptions::default());
     let actual = ls.get_folding_ranges(
-        document,
+        &document,
         FoldingRangeContext { range_limit },
         &HTMLDataManager::default(),
     );

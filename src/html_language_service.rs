@@ -153,7 +153,7 @@ impl HTMLLanguageService {
         document: &FullTextDocument,
         position: &Position,
         html_document: &HTMLDocument,
-        document_context: impl DocumentContext,
+        document_context: &impl DocumentContext,
         settings: Option<&CompletionConfiguration>,
         data_manager: &HTMLDataManager,
     ) -> CompletionList {
@@ -293,7 +293,7 @@ impl HTMLLanguageService {
     #[cfg(feature = "folding")]
     pub fn get_folding_ranges(
         &self,
-        document: FullTextDocument,
+        document: &FullTextDocument,
         context: FoldingRangeContext,
         data_manager: &HTMLDataManager,
     ) -> Vec<FoldingRange> {

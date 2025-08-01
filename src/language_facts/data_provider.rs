@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// Built-in data provider that provides information for `HTMLDataManager`
+#[derive(Clone)]
 pub struct HTMLDataProvider {
     id: String,
     tags: Vec<ITagData>,
