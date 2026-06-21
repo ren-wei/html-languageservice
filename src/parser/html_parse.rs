@@ -60,7 +60,7 @@ pub fn parse_html_document(
                     let length = (*cur).children.len();
                     (*cur).children.push(child);
                     parent_list.push(cur);
-                    cur = &mut (*cur).children[length];
+                    cur = &mut (&mut (*cur).children)[length];
                 }
                 TokenType::StartTag => {
                     (*cur).tag = Some(scanner.get_token_text().to_string());
